@@ -1,0 +1,5 @@
+[tool.pytest.ini_options]
+# Put the repo root on sys.path so `import src...` works when running bare `pytest`
+# (not just `python -m pytest`).
+pythonpath = ["."]
+testpaths = ["tests"]
