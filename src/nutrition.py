@@ -108,15 +108,12 @@ class Discrepancy:
         )
 
 
-def verify_plan(plan: dict, tolerance: float = 0.10) -> list[Discrepancy]:
-    """Check each meal's stated calories against its macros.
-
-    A meal is flagged when its stated calories differ from the Atwater-computed
-    value by more than `tolerance` (a fraction, default 10%). This catches
-    internally inconsistent model output without needing any external data.
-    """
+def _verify_meals(
+    meals: list[dict], tolerance: float, label_prefix: str = ""
+) -> list[Discrepancy]:
+    """Flag meals whose stated calories don't match their macros."""
     discrepancies: list[Discrepancy] = []
-    for meal in plan.get("meals", []):
+    for meal in meals:
         computed = calories_from_macros(
             meal.get("protein_g", 0),
             meal.get("fat_g", 0),
@@ -126,12 +123,36 @@ def verify_plan(plan: dict, tolerance: float = 0.10) -> list[Discrepancy]:
         # Avoid divide-by-zero; use the larger of the two as the denominator.
         denom = max(stated, computed, 1)
         if abs(stated - computed) / denom > tolerance:
+            name = meal.get("name", "(unnamed)")
             discrepancies.append(
                 Discrepancy(
-                    meal=meal.get("name", "(unnamed)"),
+                    meal=f"{label_prefix}{name}" if label_prefix else name,
                     field="calories",
                     stated=stated,
                     computed=computed,
                 )
             )
+    return discrepancies
+
+
+def verify_plan(plan: dict, tolerance: float = 0.10) -> list[Discrepancy]:
+    """Check each meal's stated calories against its macros.
+
+    A meal is flagged when its stated calories differ from the Atwater-computed
+    value by more than `tolerance` (a fraction, default 10%). This catches
+    internally inconsistent model output without needing any external data.
+    """
+    return _verify_meals(plan.get("meals", []), tolerance)
+
+
+def verify_weekly_plan(weekly: dict, tolerance: float = 0.10) -> list[Discrepancy]:
+    """Like verify_plan, but for a multi-day plan.
+
+    Expects {"days": [{"day", "meals": [...]}, ...]}. Flagged meals are labeled
+    with their day, e.g. "Monday — Oatmeal".
+    """
+    discrepancies: list[Discrepancy] = []
+    for day in weekly.get("days", []):
+        prefix = f"{day.get('day', '?')} — "
+        discrepancies.extend(_verify_meals(day.get("meals", []), tolerance, prefix))
     return discrepancies

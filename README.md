@@ -42,8 +42,15 @@ Get an API key from https://console.anthropic.com/.
 # Unit tests (no API key required)
 python -m pytest
 
-# Generate a plan for the demo profile (needs ANTHROPIC_API_KEY)
+# Generate a one-day plan interactively (needs ANTHROPIC_API_KEY)
 python -m src.cli
+
+# Skip the prompts and use the built-in example profile
+python -m src.cli --demo
+
+# Generate a weekly plan (7 days, or pass a number 1-7)
+python -m src.cli --week
+python -m src.cli --demo --week 5
 ```
 
 ## Status
