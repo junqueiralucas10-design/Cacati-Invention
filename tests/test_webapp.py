@@ -18,8 +18,9 @@ def test_collect_screenshots_lists_images_with_captions(tmp_path):
     (shots_dir / "notes.txt").write_text("ignored")  # non-image skipped
 
     shots = _collect_screenshots(str(tmp_path))
-    # Sorted by filename -> 01 before 02; captions are title-cased from the stem.
-    assert [s["alt"] for s in shots] == ["01 The Form", "02 Weekly Plan"]
+    # Sorted by filename (01 before 02); the numeric ordering prefix is stripped
+    # from the caption, which is then title-cased.
+    assert [s["alt"] for s in shots] == ["The Form", "Weekly Plan"]
     assert shots[0]["src"] == "/static/screenshots/01-the-form.jpg"
 
 
