@@ -1,17 +1,21 @@
 """Command-line entry point: build a profile and print a generated plan.
 
 Usage:
-    python -m src.cli
+    python -m src.cli          # interactive: asks for your details
+    python -m src.cli --demo   # skip prompts, use a built-in example profile
 """
 
 from __future__ import annotations
 
+import sys
+
 from .diet_planner import generate_plan
+from .intake import collect_profile
 from .profile import UserProfile
 
 
 def _demo_profile() -> UserProfile:
-    """A hardcoded example profile. Swap for real input as the project grows."""
+    """A hardcoded example profile, used with --demo."""
     return UserProfile(
         age=30,
         sex="male",
@@ -24,11 +28,13 @@ def _demo_profile() -> UserProfile:
     )
 
 
-def main() -> None:
-    profile = _demo_profile()
+def main(argv: list[str] | None = None) -> None:
+    argv = sys.argv[1:] if argv is None else argv
+    profile = _demo_profile() if "--demo" in argv else collect_profile()
+
     macros = profile.target_macros()
     print(
-        f"Targets — {profile.target_calories()} kcal | "
+        f"\nTargets — {profile.target_calories()} kcal | "
         f"{macros['protein_g']}g protein / {macros['fat_g']}g fat / {macros['carbs_g']}g carbs\n"
     )
 
