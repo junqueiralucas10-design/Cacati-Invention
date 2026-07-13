@@ -284,10 +284,12 @@ _PAGE = """
     .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
     .card {
       background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
-      padding: 26px; box-shadow: var(--shadow);
+      box-shadow: var(--shadow); overflow: hidden;
     }
+    .card-img { width: 100%; height: 190px; object-fit: cover; display: block; }
+    .card-body { padding: 24px; }
     .card .ico { font-size: 1.8rem; }
-    .card h3 { font-size: 1.25rem; margin: 14px 0 8px; }
+    .card h3 { font-size: 1.25rem; margin: 0 0 8px; }
     .card p { color: var(--muted); margin: 0; }
 
     .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; counter-reset: step; }
@@ -394,9 +396,18 @@ _PAGE = """
         <p>Not just a menu — a plan grounded in real numbers, checked for accuracy, and ready to shop.</p>
       </div>
       <div class="grid3">
-        <div class="card"><div class="ico">🎯</div><h3>Dialed-in targets</h3><p>We compute your calories and macros from your body stats, activity, and goal — then build meals to match.</p></div>
-        <div class="card"><div class="ico">✅</div><h3>Verified numbers</h3><p>Every meal's calories are cross-checked against its macros, so the plan's math actually adds up.</p></div>
-        <div class="card"><div class="ico">🛒</div><h3>Auto shopping list</h3><p>Ingredients from every meal are combined into one tidy list — ready for your next grocery run.</p></div>
+        <div class="card">
+          <img class="card-img" src="/static/images/meals-spread.jpg" alt="Assorted healthy meals on a table" loading="lazy">
+          <div class="card-body"><h3>🎯 Dialed-in targets</h3><p>We compute your calories and macros from your body stats, activity, and goal — then build meals to match.</p></div>
+        </div>
+        <div class="card">
+          <img class="card-img" src="/static/images/poke-bowl.jpg" alt="Colorful poke bowl with vegetables" loading="lazy">
+          <div class="card-body"><h3>✅ Verified numbers</h3><p>Every meal's calories are cross-checked against its macros, so the plan's math actually adds up.</p></div>
+        </div>
+        <div class="card">
+          <img class="card-img" src="/static/images/meal-prep.jpg" alt="Meal-prep containers with grilled chicken" loading="lazy">
+          <div class="card-body"><h3>🛒 Auto shopping list</h3><p>Ingredients from every meal are combined into one tidy list — ready for your next grocery run.</p></div>
+        </div>
       </div>
     </div>
   </section>
@@ -544,7 +555,7 @@ _PAGE = """
   <footer>
     <div class="wrap">
       <div class="brand" style="color:#fff"><span class="dot"></span> NutriForge</div>
-      <div class="disclaimer">Not medical advice. Plans are informational estimates — consult a professional for medical conditions.</div>
+      <div class="disclaimer">Not medical advice. Plans are informational estimates — consult a professional for medical conditions.<br>Food photography via Pexels (free license).</div>
     </div>
   </footer>
 
