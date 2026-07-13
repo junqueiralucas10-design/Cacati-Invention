@@ -15,6 +15,18 @@ from .profile import UserProfile
 
 MODEL = "claude-opus-4-8"
 
+# A single ingredient line, used to build a consolidated shopping list.
+_INGREDIENT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "item": {"type": "string"},
+        "quantity": {"type": "number"},
+        "unit": {"type": "string"},  # e.g. "g", "ml", "cup", "piece"
+    },
+    "required": ["item", "quantity", "unit"],
+    "additionalProperties": False,
+}
+
 # A single meal — reused by both the daily and weekly schemas.
 _MEAL_SCHEMA = {
     "type": "object",
@@ -25,8 +37,17 @@ _MEAL_SCHEMA = {
         "protein_g": {"type": "integer"},
         "fat_g": {"type": "integer"},
         "carbs_g": {"type": "integer"},
+        "ingredients": {"type": "array", "items": _INGREDIENT_SCHEMA},
     },
-    "required": ["name", "description", "calories", "protein_g", "fat_g", "carbs_g"],
+    "required": [
+        "name",
+        "description",
+        "calories",
+        "protein_g",
+        "fat_g",
+        "carbs_g",
+        "ingredients",
+    ],
     "additionalProperties": False,
 }
 
@@ -95,8 +116,9 @@ def _build_prompt(profile: UserProfile) -> str:
     return (
         "Create a one-day meal plan for this person.\n\n"
         f"{_profile_block(profile)}\n"
-        "Provide 3-5 meals whose totals land close to these targets. Respect all "
-        "restrictions and allergies strictly."
+        "Provide 3-5 meals whose totals land close to these targets. For each meal "
+        "list its ingredients with a quantity and unit (e.g. grams, ml, cups, pieces) "
+        "so a shopping list can be built. Respect all restrictions and allergies strictly."
     )
 
 
@@ -106,6 +128,8 @@ def _build_weekly_prompt(profile: UserProfile, days: int) -> str:
         f"{_profile_block(profile)}\n"
         f"Provide {days} days, each with 3-5 meals whose daily totals land close to "
         "the targets above. Vary the meals across days so the week isn't repetitive. "
+        "For each meal list its ingredients with a quantity and unit (e.g. grams, ml, "
+        "cups, pieces) so a shopping list can be built. "
         "Respect all restrictions and allergies strictly."
     )
 

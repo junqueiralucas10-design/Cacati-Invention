@@ -16,6 +16,7 @@ from .diet_planner import generate_plan, generate_weekly_plan
 from .intake import collect_profile
 from .nutrition import verify_plan, verify_weekly_plan
 from .profile import UserProfile
+from .shopping import build_shopping_list
 
 
 def _demo_profile() -> UserProfile:
@@ -60,6 +61,15 @@ def _print_flags(discrepancies: list) -> None:
         print("\n✓ Nutrition check passed — stated calories match the macros.")
 
 
+def _print_shopping(plan: dict) -> None:
+    items = build_shopping_list(plan)
+    if not items:
+        return
+    print("\n🛒 Shopping list:")
+    for item in items:
+        print(f"   - {item}")
+
+
 def main(argv: list[str] | None = None) -> None:
     argv = sys.argv[1:] if argv is None else argv
     profile = _demo_profile() if "--demo" in argv else collect_profile()
@@ -78,6 +88,7 @@ def main(argv: list[str] | None = None) -> None:
             _print_meal(meal)
         print(plan["notes"])
         _print_flags(verify_plan(plan))
+        _print_shopping(plan)
     else:
         plan = generate_weekly_plan(profile, days=days)
         print(plan["summary"], "\n")
@@ -87,6 +98,7 @@ def main(argv: list[str] | None = None) -> None:
                 _print_meal(meal)
         print(plan["notes"])
         _print_flags(verify_weekly_plan(plan))
+        _print_shopping(plan)
 
 
 if __name__ == "__main__":
