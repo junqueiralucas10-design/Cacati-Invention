@@ -2,7 +2,25 @@
 
 import pytest
 
-from src.webapp import create_app, profile_from_form
+from src.webapp import _collect_screenshots, create_app, profile_from_form
+
+
+def test_collect_screenshots_missing_folder_returns_empty(tmp_path):
+    assert _collect_screenshots(str(tmp_path)) == []  # no screenshots/ subdir
+    assert _collect_screenshots(None) == []
+
+
+def test_collect_screenshots_lists_images_with_captions(tmp_path):
+    shots_dir = tmp_path / "screenshots"
+    shots_dir.mkdir()
+    (shots_dir / "02-weekly_plan.png").write_bytes(b"x")
+    (shots_dir / "01-the-form.jpg").write_bytes(b"x")
+    (shots_dir / "notes.txt").write_text("ignored")  # non-image skipped
+
+    shots = _collect_screenshots(str(tmp_path))
+    # Sorted by filename -> 01 before 02; captions are title-cased from the stem.
+    assert [s["alt"] for s in shots] == ["01 The Form", "02 Weekly Plan"]
+    assert shots[0]["src"] == "/static/screenshots/01-the-form.jpg"
 
 
 class _Form(dict):

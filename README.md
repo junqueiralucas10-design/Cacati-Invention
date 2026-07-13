@@ -68,6 +68,11 @@ python -m src.webapp     # serves http://127.0.0.1:5000
 Fill in the form, pick a plan length, and the page shows the plan, the nutrition
 check, and the shopping list.
 
+To add product screenshots to the landing page, drop image files into
+`src/static/screenshots/` — they appear automatically in the "See it in action"
+gallery (filename becomes the caption; a numeric prefix controls order). See
+`src/static/screenshots/README.md`.
+
 ## Status
 
 Early stage — working scaffold. The calorie/macro math and the Claude-backed
