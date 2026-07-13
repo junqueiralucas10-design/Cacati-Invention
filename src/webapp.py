@@ -13,6 +13,7 @@ without an API key.
 
 from __future__ import annotations
 
+import os
 from typing import Callable
 
 from flask import Flask, render_template_string, request
@@ -100,12 +101,39 @@ def _parse_days(form) -> int | None:
     return int(raw) if raw.isdigit() else None
 
 
+_IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
+
+
+def _collect_screenshots(static_folder: str | None) -> list[dict]:
+    """List image files under <static>/screenshots for the gallery.
+
+    Returns [] when the folder is missing or empty, so the section simply
+    doesn't render until the user drops images in. Filenames become alt text
+    (dashes/underscores -> spaces); sort order follows the filename, so a
+    numeric prefix like "01-form.png" controls placement.
+    """
+    if not static_folder:
+        return []
+    folder = os.path.join(static_folder, "screenshots")
+    if not os.path.isdir(folder):
+        return []
+    shots = []
+    for fname in sorted(os.listdir(folder)):
+        if os.path.splitext(fname)[1].lower() not in _IMAGE_EXTS:
+            continue
+        stem = os.path.splitext(fname)[0]
+        alt = stem.replace("-", " ").replace("_", " ").strip().title()
+        shots.append({"src": f"/static/screenshots/{fname}", "alt": alt})
+    return shots
+
+
 def _context(**overrides) -> dict:
     """Shared template context (choice lists + defaults)."""
     ctx = {
         "error": None,
         "result": None,
         "form": {},
+        "screenshots": [],
         "sex_choices": _SEX_CHOICES,
         "activity_choices": _ACTIVITY_CHOICES,
         "goal_choices": _GOAL_CHOICES,
@@ -121,15 +149,23 @@ def create_app(generate: Generator | None = None) -> Flask:
 
     @app.get("/")
     def index():
-        return render_template_string(_PAGE, **_context())
+        return render_template_string(
+            _PAGE, **_context(screenshots=_collect_screenshots(app.static_folder))
+        )
 
     @app.post("/plan")
     def plan():
         form = request.form
+        shots = _collect_screenshots(app.static_folder)
         try:
             profile = profile_from_form(form)
         except IntakeError as exc:
-            return render_template_string(_PAGE, **_context(error=str(exc), form=form)), 400
+            return (
+                render_template_string(
+                    _PAGE, **_context(error=str(exc), form=form, screenshots=shots)
+                ),
+                400,
+            )
 
         days = _parse_days(form)
         raw_plan = gen(profile, days)
@@ -151,7 +187,9 @@ def create_app(generate: Generator | None = None) -> Flask:
             "shopping": [str(i) for i in build_shopping_list(raw_plan)],
             "targets": {"calories": profile.target_calories(), **macros},
         }
-        return render_template_string(_PAGE, **_context(result=result, form=form))
+        return render_template_string(
+            _PAGE, **_context(result=result, form=form, screenshots=shots)
+        )
 
     return app
 
@@ -170,18 +208,19 @@ _PAGE = """
   <noscript><link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
   <style>
     :root {
-      --bg: #f6f8f4;
+      --bg: #f4f6fb;
       --surface: #ffffff;
-      --ink: #12241b;
-      --muted: #5c6b61;
-      --line: #e4eae2;
-      --brand: #1c9d5b;
-      --brand-dark: #157a48;
-      --hero-1: #0e3b2a;
-      --hero-2: #17663f;
-      --lime: #b9f27c;
-      --accent: #f2913d;
-      --shadow: 0 10px 30px rgba(16, 40, 28, 0.08);
+      --ink: #0b1437;
+      --muted: #5a6480;
+      --line: #e6e9f2;
+      --brand: #ff6a1a;
+      --brand-dark: #e2540e;
+      --hero-1: #0a1130;
+      --hero-2: #1a2b66;
+      --lime: #c6f24e;
+      --accent: #ff6a1a;
+      --ok: #1c9d5b;
+      --shadow: 0 12px 34px rgba(11, 20, 55, 0.10);
       --radius: 16px;
     }
     * { box-sizing: border-box; }
@@ -217,22 +256,22 @@ _PAGE = """
     .btn.big { padding: 16px 30px; font-size: 1.05rem; }
 
     /* Hero */
-    .hero { background: radial-gradient(120% 120% at 80% 0%, var(--hero-2), var(--hero-1)); color: #eafff2; padding: 76px 0 90px; }
+    .hero { background: radial-gradient(120% 120% at 80% 0%, var(--hero-2), var(--hero-1)); color: #e9ecff; padding: 76px 0 90px; }
     .hero .wrap { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 40px; align-items: center; }
     .eyebrow { display: inline-block; font-weight: 700; font-size: 0.82rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--lime); margin-bottom: 14px; }
     .hero h1 { font-size: clamp(2.3rem, 5vw, 3.6rem); font-weight: 600; color: #fff; margin: 0 0 16px; }
-    .hero p.lead { font-size: 1.15rem; color: #cdeadb; margin: 0 0 26px; max-width: 30ch; }
+    .hero p.lead { font-size: 1.15rem; color: #b9c2e6; margin: 0 0 26px; max-width: 30ch; }
     .hero-cta { display: flex; gap: 14px; flex-wrap: wrap; }
-    .btn.lime { background: var(--lime); color: #0e3b2a; }
-    .btn.lime:hover { background: #a9ea63; }
+    .btn.lime { background: var(--lime); color: #0a1130; }
+    .btn.lime:hover { background: #b6e83f; }
     .stats { display: flex; gap: 28px; margin-top: 34px; }
     .stat b { font-family: "Fraunces", serif; font-size: 1.6rem; display: block; color: #fff; }
-    .stat span { font-size: 0.85rem; color: #b6d9c5; }
+    .stat span { font-size: 0.85rem; color: #9aa4cf; }
     .hero-card { background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.15); border-radius: 20px; padding: 22px; }
     .hero-card h4 { margin: 0 0 12px; font-family: "Manrope"; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--lime); }
-    .hc-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dashed rgba(255,255,255,0.15); color: #eafff2; }
+    .hc-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dashed rgba(255,255,255,0.15); color: #e9ecff; }
     .hc-row:last-child { border-bottom: 0; }
-    .hc-row span { color: #bfe3cf; }
+    .hc-row span { color: #aab3d9; }
 
     /* Sections */
     section.pad { padding: 72px 0; }
@@ -250,31 +289,31 @@ _PAGE = """
 
     .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; counter-reset: step; }
     .step { position: relative; padding-left: 8px; }
-    .step .n { width: 40px; height: 40px; border-radius: 50%; background: #e8f6ee; color: var(--brand-dark); font-weight: 800; display: grid; place-items: center; font-family: "Fraunces", serif; }
+    .step .n { width: 40px; height: 40px; border-radius: 50%; background: #ffefe2; color: var(--brand-dark); font-weight: 800; display: grid; place-items: center; font-family: "Fraunces", serif; }
     .step h3 { font-size: 1.15rem; margin: 14px 0 6px; }
     .step p { color: var(--muted); margin: 0; }
 
     /* Planner form */
-    .planner { background: linear-gradient(180deg, #eef5ec, var(--bg)); }
+    .planner { background: linear-gradient(180deg, #eef1f9, var(--bg)); }
     .form-card { background: var(--surface); border: 1px solid var(--line); border-radius: 22px; box-shadow: var(--shadow); padding: 34px; max-width: 720px; margin: 0 auto; }
     form { display: grid; gap: 18px; }
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
     label { display: grid; gap: 6px; font-weight: 700; font-size: 0.92rem; }
     input, select { padding: 12px 14px; font: inherit; border: 1px solid #d7ded4; border-radius: 12px; background: #fcfdfb; }
-    input:focus, select:focus { outline: 2px solid rgba(28,157,91,0.35); border-color: var(--brand); }
+    input:focus, select:focus { outline: 2px solid rgba(255,106,26,0.35); border-color: var(--brand); }
     .hint { font-weight: 500; font-size: 0.85rem; color: var(--muted); min-height: 1.1em; }
     .error { background: #fdecec; color: #a12626; border: 1px solid #f6cccc; padding: 12px 14px; border-radius: 12px; font-weight: 600; }
     button[type=submit] { justify-self: start; }
 
     /* Results */
     .result-wrap { max-width: 760px; margin: 34px auto 0; }
-    .targets-pill { display: inline-flex; gap: 10px; flex-wrap: wrap; background: #e8f6ee; color: var(--brand-dark); border-radius: 999px; padding: 10px 18px; font-weight: 700; }
+    .targets-pill { display: inline-flex; gap: 10px; flex-wrap: wrap; background: #ffefe2; color: var(--brand-dark); border-radius: 999px; padding: 10px 18px; font-weight: 700; }
     .day-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; margin: 16px 0; box-shadow: var(--shadow); }
     .day-card h3 { margin: 0 0 10px; }
     .meal { padding: 12px 0; border-bottom: 1px solid #f0f3ee; }
     .meal:last-child { border-bottom: 0; }
     .meal .macros { color: var(--muted); font-size: 0.9rem; }
-    .pass { color: var(--brand-dark); font-weight: 700; }
+    .pass { color: var(--ok); font-weight: 700; }
     .flagbox { background: #fff6ec; border: 1px solid #f6dcbf; border-radius: 12px; padding: 14px 16px; color: #8a5a1c; }
     .shop { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); }
     .shop ul, .flagbox ul { margin: 8px 0 0; padding-left: 20px; }
@@ -286,9 +325,15 @@ _PAGE = """
     .quote .who { color: var(--muted); font-family: "Manrope"; font-size: 0.95rem; font-weight: 600; }
 
     /* Footer */
-    footer { background: var(--hero-1); color: #bfe3cf; padding: 40px 0; margin-top: 20px; }
+    footer { background: var(--hero-1); color: #aab3d9; padding: 40px 0; margin-top: 20px; }
     footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 16px; align-items: center; }
     footer .disclaimer { font-size: 0.85rem; max-width: 46ch; }
+
+    /* Screenshot gallery */
+    .shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 22px; }
+    .shot { margin: 0; }
+    .shot img { width: 100%; height: auto; display: block; border-radius: 14px; border: 1px solid var(--line); box-shadow: var(--shadow); background: var(--surface); }
+    .shot figcaption { margin-top: 10px; text-align: center; color: var(--muted); font-weight: 600; font-size: 0.92rem; }
 
     @media (max-width: 820px) {
       .hero .wrap { grid-template-columns: 1fr; }
@@ -305,6 +350,7 @@ _PAGE = """
       <div class="nav-links">
         <a href="#features">Features</a>
         <a href="#how">How it works</a>
+        {% if screenshots %}<a href="#screens">Screens</a>{% endif %}
         <a href="#pricing">Pricing</a>
         <a class="btn" href="#plan">Get your plan</a>
       </div>
@@ -319,7 +365,7 @@ _PAGE = """
         <p class="lead">Personalized meal plans that hit your exact calorie and macro targets — for building muscle or losing weight, the healthy way.</p>
         <div class="hero-cta">
           <a class="btn lime big" href="#plan">Build my plan — free</a>
-          <a class="btn ghost big" href="#how" style="color:#eafff2;border-color:rgba(255,255,255,0.3)">See how it works</a>
+          <a class="btn ghost big" href="#how" style="color:#e9ecff;border-color:rgba(255,255,255,0.3)">See how it works</a>
         </div>
         <div class="stats">
           <div class="stat"><b>3&nbsp;sec</b><span>to a full plan</span></div>
@@ -352,7 +398,7 @@ _PAGE = """
     </div>
   </section>
 
-  <section class="pad" id="how" style="background:#eef5ec">
+  <section class="pad" id="how" style="background:#eef1f9">
     <div class="wrap">
       <div class="section-head"><h2>Three steps to your plan</h2><p>From your details to a full day (or week) of meals in seconds.</p></div>
       <div class="steps">
@@ -362,6 +408,25 @@ _PAGE = """
       </div>
     </div>
   </section>
+
+  {% if screenshots %}
+  <section class="pad" id="screens">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>See it in action</h2>
+        <p>Real plans, real numbers — straight from the app.</p>
+      </div>
+      <div class="shots">
+        {% for s in screenshots %}
+          <figure class="shot">
+            <img src="{{ s.src }}" alt="{{ s.alt }}" loading="lazy">
+            <figcaption>{{ s.alt }}</figcaption>
+          </figure>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+  {% endif %}
 
   <!-- The planner -->
   <section class="pad planner" id="plan">
