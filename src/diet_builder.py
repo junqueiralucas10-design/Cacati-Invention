@@ -1,13 +1,13 @@
 """Rule-based personalized diet builder.
 
-Turns a UserProfile's calorie/macro targets into a concrete day (or week) of
-meals, chosen from the bundled food database and filtered by the person's
-dietary restrictions and allergies. No API key required — this is the engine
-that runs after the client fills in their details.
+Turns a UserProfile's calorie/macro targets into a realistic day (or week) of
+meals from the bundled food database. Foods are chosen to suit the meal (no
+salmon or broccoli at breakfast), filtered by the person's dietary restrictions
+and allergies, and portioned in natural units (2 eggs, 1 banana, 1 tbsp oil).
+No API key required.
 
-The output matches the shape produced by the AI planner (summary / meals /
-notes, each meal with macros + ingredients), so it flows straight into the
-nutrition check and shopping-list builder.
+Output matches the AI planner's shape (summary / meals with macros + ingredients
+/ notes), so it flows straight into the nutrition check and shopping list.
 """
 
 from __future__ import annotations
@@ -23,7 +23,6 @@ _DATA_FILE = Path(__file__).parent / "data" / "foods.json"
 
 _DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
-# Map free-text tokens to a canonical allergen key.
 _ALLERGEN_WORDS = {
     "nut": "nuts", "nuts": "nuts", "peanut": "nuts", "peanuts": "nuts", "almond": "nuts",
     "dairy": "dairy", "milk": "dairy", "lactose": "dairy", "cheese": "dairy",
@@ -39,16 +38,20 @@ _ALLERGEN_WORDS = {
 class Food:
     name: str
     aliases: tuple[str, ...]
-    group: str          # protein | carb | veg | fruit | fat
-    diet: str           # vegan | vegetarian | omnivore
+    group: str                      # protein | carb | veg | fruit | fat
+    diet: str                       # vegan | vegetarian | omnivore
     allergens: tuple[str, ...]
+    meals: tuple[str, ...]          # which meal types this suits
+    unit: str                       # "" = whole items, "g", "slice", "tbsp", "cup", "scoop"
+    unit_g: float                   # grams per unit (1 for "g")
+    min_g: float
+    max_g: float
     calories: float
     protein_g: float
     fat_g: float
     carbs_g: float
 
     def short_name(self) -> str:
-        """Display name without the ", cooked"/", raw" detail suffix."""
         return self.name.split(",")[0]
 
 
@@ -64,6 +67,11 @@ def _load_foods(data_file: Path | None = None) -> list[Food]:
                 group=e.get("group", ""),
                 diet=e.get("diet", "omnivore"),
                 allergens=tuple(e.get("allergens", [])),
+                meals=tuple(e.get("meals", [])),
+                unit=e.get("unit", "g"),
+                unit_g=e.get("unit_g", 1),
+                min_g=e.get("min_g", 50),
+                max_g=e.get("max_g", 300),
                 calories=per["calories"],
                 protein_g=per["protein_g"],
                 fat_g=per["fat_g"],
@@ -74,7 +82,6 @@ def _load_foods(data_file: Path | None = None) -> list[Food]:
 
 
 def _parse_restrictions(tokens: list[str]):
-    """Interpret restriction/allergy text into filtering rules."""
     low = [t.strip().lower() for t in tokens if t.strip()]
     joined = " ".join(low)
 
@@ -91,7 +98,6 @@ def _parse_restrictions(tokens: list[str]):
     excluded_allergens: set[str] = set()
     name_excludes: set[str] = set()
     for tok in low:
-        # "no X" / "X-free" / "X free" -> exclude keyword X
         keyword = tok
         if keyword.startswith("no "):
             keyword = keyword[3:]
@@ -99,11 +105,9 @@ def _parse_restrictions(tokens: list[str]):
         for word in keyword.split():
             if word in _ALLERGEN_WORDS:
                 excluded_allergens.add(_ALLERGEN_WORDS[word])
-        # Direct allergen words anywhere in the token
         for word in tok.split():
             if word in _ALLERGEN_WORDS:
                 excluded_allergens.add(_ALLERGEN_WORDS[word])
-        # Keep a name-exclusion keyword when it's a specific "no X"/"X-free" phrase
         if (tok.startswith("no ") or "free" in tok) and len(keyword) >= 3:
             if keyword not in ("vegan", "vegetarian", "pescatarian", "gluten", "dairy"):
                 name_excludes.add(keyword)
@@ -141,86 +145,118 @@ def _macros_for(food: Food, grams: float) -> dict:
     }
 
 
-def _round5(x: float) -> int:
-    return int(max(0, round(x / 5.0) * 5))
+def _portion(food: Food, grams: float) -> tuple[int, str, float]:
+    """Convert a desired gram amount into a natural (quantity, unit, actual_g)."""
+    grams = max(food.min_g, min(grams, food.max_g))
+    if food.unit == "g":
+        q = int(round(grams / 5.0) * 5)
+        q = max(q, 5)
+        return q, "g", float(q)
+    # Countable / measured units (eggs, slices, tbsp, cups, scoops).
+    max_count = max(1, round(food.max_g / food.unit_g))
+    count = min(max(1, round(grams / food.unit_g)), max_count)
+    return count, food.unit, float(count * food.unit_g)
 
 
 def _pick(pool: list[Food], idx: int) -> Food | None:
     return pool[idx % len(pool)] if pool else None
 
 
-def _build_meal(name: str, cal_share: float, targets: dict, pools: dict, rot: int) -> dict:
-    """Assemble one meal to hit its share of the day's calories + protein."""
+def _pool(foods: list[Food], group: str, meal_key: str) -> list[Food]:
+    return [f for f in foods if f.group == group and meal_key in f.meals]
+
+
+def _phrase(items: list[str]) -> str:
+    items = [i[:1].upper() + i[1:] for i in items]
+    if not items:
+        return "A simple mix"
+    if len(items) == 1:
+        return items[0]
+    return ", ".join(items[:-1]) + " and " + items[-1]
+
+
+def _build_meal(name: str, cal_share: float, targets: dict, foods: list[Food], rot: int) -> dict:
+    meal_key = name.lower()
     meal_cal = targets["calories"] * cal_share
     meal_protein = targets["protein_g"] * cal_share
     meal_fat = targets["fat_g"] * cal_share
-    is_snack = name == "Snack"
 
-    components: list[tuple[Food, int]] = []
+    comps: list[tuple[Food, int, str, float]] = []
     totals = {"protein_g": 0.0, "fat_g": 0.0, "carbs_g": 0.0}
+    used_ids: set[int] = set()
 
-    def add(food: Food | None, grams: int) -> None:
-        if food is None or grams < 10:
+    def add(food: Food | None, grams: float) -> None:
+        if food is None:
             return
-        components.append((food, grams))
-        m = _macros_for(food, grams)
+        q, u, g = _portion(food, grams)
+        if g < 5:
+            return
+        comps.append((food, q, u, g))
+        used_ids.add(id(food))
+        m = _macros_for(food, g)
         for k in totals:
             totals[k] += m[k]
 
-    # 1. Protein source sized to hit the meal's protein share.
-    protein = _pick(pools["protein"], rot)
-    if protein:
-        grams_p = _round5(meal_protein / (protein.protein_g / 100)) if protein.protein_g else 100
-        add(protein, min(max(grams_p, 40), 350))
+    proteins = _pool(foods, "protein", meal_key)
+    carbs = _pool(foods, "carb", meal_key)
+    vegs = _pool(foods, "veg", meal_key)
+    fruits = _pool(foods, "fruit", meal_key)
+    fats = _pool(foods, "fat", meal_key)
 
-    # 2. A vegetable (or a fruit for snacks) for volume + micros.
-    if is_snack:
-        add(_pick(pools["fruit"], rot), 120)
+    # 1. Primary protein, sized to the meal's protein share.
+    p1 = _pick(proteins, rot)
+    if p1:
+        need = meal_protein / (p1.protein_g / 100) if p1.protein_g else p1.min_g
+        add(p1, need)
+
+    # 2. Secondary protein when the primary can't cover it (natural except at snack).
+    if meal_key != "snack" and len(proteins) > 1:
+        deficit = meal_protein - totals["protein_g"]
+        if deficit > 12:
+            for k in range(1, len(proteins) + 1):
+                cand = proteins[(rot + k) % len(proteins)]
+                if id(cand) not in used_ids:
+                    need = deficit / (cand.protein_g / 100) if cand.protein_g else cand.min_g
+                    add(cand, need)
+                    break
+
+    # 3. A vegetable (lunch/dinner) or fruit (breakfast/snack).
+    if meal_key in ("lunch", "dinner"):
+        add(_pick(vegs, rot), 120)
     else:
-        add(_pick(pools["veg"], rot), 120)
+        fr = _pick(fruits, rot)
+        if fr:
+            add(fr, fr.min_g)
 
-    # 3. Fill the remaining calories with a carb source.
+    # 4. Fill remaining calories with a carb source.
     cal_so_far = calories_from_macros(totals["protein_g"], totals["fat_g"], totals["carbs_g"])
-    remaining = meal_cal - cal_so_far
-    carb = _pick(pools["carb"], rot)
-    if carb and remaining > 40:
-        grams_c = _round5(remaining / (carb.calories / 100))
-        add(carb, min(grams_c, 400))
+    c1 = _pick(carbs, rot)
+    if c1 and meal_cal - cal_so_far > 50:
+        add(c1, (meal_cal - cal_so_far) / (c1.calories / 100))
 
-    # 4. Top up fat toward the meal's fat share with a small fat source.
+    # 5. Top up fat toward the meal's fat share.
+    ft = _pick(fats, rot)
     fat_deficit = meal_fat - totals["fat_g"]
-    fat = _pick(pools["fat"], rot)
-    if fat and fat_deficit > 4 and fat.fat_g:
-        grams_f = _round5(fat_deficit / (fat.fat_g / 100))
-        add(fat, min(max(grams_f, 5), 40))
+    if ft and fat_deficit > 4 and ft.fat_g:
+        add(ft, fat_deficit / (ft.fat_g / 100))
 
     protein_g = round(totals["protein_g"])
     fat_g = round(totals["fat_g"])
     carbs_g = round(totals["carbs_g"])
     calories = round(calories_from_macros(protein_g, fat_g, carbs_g))
 
-    names = [f.short_name() for f, _ in components]
-    description = _phrase(names) + "."
-    ingredients = [{"item": f.short_name(), "quantity": g, "unit": "g"} for f, g in components]
+    names = [f.short_name() for f, _, _, _ in comps]
+    ingredients = [{"item": f.short_name(), "quantity": q, "unit": u} for f, q, u, _ in comps]
 
     return {
         "name": name,
-        "description": description,
+        "description": _phrase(names) + ".",
         "calories": calories,
         "protein_g": protein_g,
         "fat_g": fat_g,
         "carbs_g": carbs_g,
         "ingredients": ingredients,
     }
-
-
-def _phrase(items: list[str]) -> str:
-    items = [i.capitalize() for i in items]
-    if not items:
-        return "A simple mix"
-    if len(items) == 1:
-        return items[0]
-    return ", ".join(items[:-1]) + " and " + items[-1]
 
 
 def _meal_plan_shares(calories: int) -> list[tuple[str, float]]:
@@ -235,24 +271,28 @@ _GOAL_WORD = {
     "maintain": "maintenance",
 }
 
-
-def _build_day_meals(profile: UserProfile, pools: dict, rot: int) -> list[dict]:
-    macros = profile.target_macros()
-    targets = {"calories": profile.target_calories(), **macros}
-    meals = []
-    for i, (name, share) in enumerate(_meal_plan_shares(targets["calories"])):
-        meals.append(_build_meal(name, share, targets, pools, rot + i))
-    return meals
+_NOTES = (
+    "Built from our food database to match your calorie and macro targets. "
+    "Portions are starting points — adjust to appetite. Not medical advice; "
+    "consult a professional for medical conditions."
+)
 
 
-def _pools_for(profile: UserProfile, data_file: Path | None = None) -> dict:
+def _build_day_meals(profile: UserProfile, foods: list[Food], rot: int) -> list[dict]:
+    targets = {"calories": profile.target_calories(), **profile.target_macros()}
+    return [
+        _build_meal(name, share, targets, foods, rot + i)
+        for i, (name, share) in enumerate(_meal_plan_shares(targets["calories"]))
+    ]
+
+
+def _filtered_or_raise(profile: UserProfile, data_file: Path | None) -> list[Food]:
     foods = _filter_foods(_load_foods(data_file), profile)
-    pools = {g: [f for f in foods if f.group == g] for g in ("protein", "carb", "veg", "fruit", "fat")}
-    if not pools["protein"]:
+    if not any(f.group == "protein" for f in foods):
         raise ValueError(
             "No suitable protein sources for these restrictions — please relax them."
         )
-    return pools
+    return foods
 
 
 def _day_totals(meals: list[dict]) -> dict:
@@ -268,17 +308,10 @@ def _summary(profile: UserProfile, totals: dict) -> str:
     )
 
 
-_NOTES = (
-    "Built from our food database to match your calorie and macro targets. "
-    "Portions are starting points — adjust to appetite. Not medical advice; "
-    "consult a professional for medical conditions."
-)
-
-
 def build_personalized_plan(profile: UserProfile, data_file: Path | None = None) -> dict:
     """Build a single-day personalized plan (no API key needed)."""
-    pools = _pools_for(profile, data_file)
-    meals = _build_day_meals(profile, pools, rot=0)
+    foods = _filtered_or_raise(profile, data_file)
+    meals = _build_day_meals(profile, foods, rot=0)
     return {"summary": _summary(profile, _day_totals(meals)), "meals": meals, "notes": _NOTES}
 
 
@@ -288,11 +321,11 @@ def build_personalized_weekly_plan(
     """Build a multi-day personalized plan, rotating foods for variety."""
     if not 1 <= days <= 7:
         raise ValueError("days must be between 1 and 7")
-    pools = _pools_for(profile, data_file)
-    day_blocks = []
-    for d in range(days):
-        meals = _build_day_meals(profile, pools, rot=d)  # rotate selection per day
-        day_blocks.append({"day": _DAY_NAMES[d], "meals": meals})
+    foods = _filtered_or_raise(profile, data_file)
+    day_blocks = [
+        {"day": _DAY_NAMES[d], "meals": _build_day_meals(profile, foods, rot=d)}
+        for d in range(days)
+    ]
     summary = (
         f"A personalized {_GOAL_WORD.get(profile.goal, 'balanced')} {days}-day plan, "
         "varied across days and matched to your targets."

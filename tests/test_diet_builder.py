@@ -73,10 +73,14 @@ def test_nut_allergy_excludes_nuts():
 
 
 def test_impossible_restrictions_raise():
-    # vegan + soy + all legumes excluded by name leaves no protein source.
+    # vegan + soy allergy removes tofu/tempeh/soy milk/edamame; excluding the
+    # remaining legumes by name leaves no protein source at all.
     with pytest.raises(ValueError):
         build_personalized_plan(
-            _profile(dietary_restrictions=["vegan", "no beans", "no lentils", "no tofu"])
+            _profile(
+                dietary_restrictions=["vegan", "no beans", "no lentils", "no chickpeas"],
+                allergies=["soy"],
+            )
         )
 
 
@@ -93,3 +97,35 @@ def test_weekly_plan_shape_and_variety():
 def test_weekly_rejects_bad_day_count():
     with pytest.raises(ValueError):
         build_personalized_weekly_plan(_profile(), days=9)
+
+
+def _meal(plan, name):
+    return next(m for m in plan["meals"] if m["name"] == name)
+
+
+def test_breakfast_avoids_dinner_only_foods():
+    plan = build_personalized_plan(_profile())
+    breakfast_items = " ".join(i["item"].lower() for i in _meal(plan, "Breakfast")["ingredients"])
+    for bad in ("salmon", "broccoli", "chicken", "beef", "rice", "tuna"):
+        assert bad not in breakfast_items
+
+
+def test_dinner_avoids_breakfast_only_foods():
+    plan = build_personalized_plan(_profile())
+    dinner_items = " ".join(i["item"].lower() for i in _meal(plan, "Dinner")["ingredients"])
+    for bad in ("oats", "banana", "cereal", "bagel"):
+        assert bad not in dinner_items
+
+
+def test_portions_use_natural_units():
+    # e.g. eggs are counted ("" unit), not given in grams.
+    plan = build_personalized_plan(_profile())
+    units = {i["unit"] for m in plan["meals"] for i in m["ingredients"]}
+    assert "" in units or "tbsp" in units or "slice" in units  # some countable/measured unit used
+
+    eggs = [
+        i for m in plan["meals"] for i in m["ingredients"] if i["item"].lower() == "eggs"
+    ]
+    if eggs:  # when eggs are chosen, they're a small whole count, not hundreds of grams
+        assert eggs[0]["unit"] == ""
+        assert 1 <= eggs[0]["quantity"] <= 4
