@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" font-family="'Manrope','Segoe UI',system-ui,sans-serif">
+  <defs>
+    <filter id="sh" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="12" stdDeviation="18" flood-color="#0b1437" flood-opacity="0.14"/>
+    </filter>
+  </defs>
+  <rect width="1000" height="720" fill="#f4f6fb"/>
+
+  <!-- window -->
+  <rect x="30" y="24" width="940" height="672" rx="18" fill="#ffffff" stroke="#e6e9f2" filter="url(#sh)"/>
+  <!-- title bar -->
+  <path d="M 30,76 V 42 a18,18 0 0 1 18,-18 H 952 a18,18 0 0 1 18,18 V 76 Z" fill="#0a1130"/>
+  <circle cx="60" cy="50" r="6" fill="#ff6a1a"/>
+  <circle cx="84" cy="50" r="6" fill="#c6f24e"/>
+  <circle cx="108" cy="50" r="6" fill="#3a4570"/>
+  <rect x="380" y="37" width="240" height="26" rx="13" fill="#182a63"/>
+  <text x="500" y="54" text-anchor="middle" fill="#aab3d9" font-size="13" font-weight="600">nutriforge.app/plan</text>
+
+  <!-- heading -->
+  <text x="64" y="130" font-family="'Fraunces',Georgia,serif" font-size="34" font-weight="600" fill="#0b1437">Your plan</text>
+
+  <!-- targets pill -->
+  <rect x="64" y="150" width="700" height="36" rx="18" fill="#ffefe2"/>
+  <text x="86" y="174" fill="#e2540e" font-size="15" font-weight="700">2,600 kcal    ·    164g protein    ·    72g fat    ·    300g carbs</text>
+
+  <!-- meal 1 -->
+  <rect x="64" y="212" width="872" height="104" rx="14" fill="#ffffff" stroke="#e6e9f2"/>
+  <text x="88" y="246" font-size="18" font-weight="700" fill="#0b1437">Greek yogurt &amp; oats bowl</text>
+  <text x="912" y="246" text-anchor="end" font-size="16" font-weight="700" fill="#5a6480">420 kcal</text>
+  <text x="88" y="272" font-size="14" fill="#5a6480">Greek yogurt, rolled oats, banana, and a handful of almonds.</text>
+  <text x="88" y="296" font-size="13" font-weight="600" fill="#8a93b2">P 34g  /  F 12g  /  C 48g</text>
+
+  <!-- meal 2 -->
+  <rect x="64" y="332" width="872" height="104" rx="14" fill="#ffffff" stroke="#e6e9f2"/>
+  <text x="88" y="366" font-size="18" font-weight="700" fill="#0b1437">Grilled chicken &amp; brown rice</text>
+  <text x="912" y="366" text-anchor="end" font-size="16" font-weight="700" fill="#5a6480">620 kcal</text>
+  <text x="88" y="392" font-size="14" fill="#5a6480">Chicken breast, brown rice, broccoli, a drizzle of olive oil.</text>
+  <text x="88" y="416" font-size="13" font-weight="600" fill="#8a93b2">P 55g  /  F 18g  /  C 60g</text>
+
+  <!-- meal 3 -->
+  <rect x="64" y="452" width="872" height="104" rx="14" fill="#ffffff" stroke="#e6e9f2"/>
+  <text x="88" y="486" font-size="18" font-weight="700" fill="#0b1437">Salmon, sweet potato &amp; spinach</text>
+  <text x="912" y="486" text-anchor="end" font-size="16" font-weight="700" fill="#5a6480">560 kcal</text>
+  <text x="88" y="512" font-size="14" fill="#5a6480">Baked salmon with roasted sweet potato and sautéed spinach.</text>
+  <text x="88" y="536" font-size="13" font-weight="600" fill="#8a93b2">P 42g  /  F 22g  /  C 40g</text>
+
+  <!-- nutrition check -->
+  <circle cx="74" cy="596" r="11" fill="#e6f6ec"/>
+  <path d="M 69,596 l 3.5,3.5 l 6.5,-7" fill="none" stroke="#1c9d5b" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="94" y="601" font-size="15" font-weight="700" fill="#1c9d5b">Nutrition check passed — stated calories match the macros.</text>
+</svg>

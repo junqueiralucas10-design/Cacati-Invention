@@ -14,6 +14,7 @@ without an API key.
 from __future__ import annotations
 
 import os
+import re
 from typing import Callable
 
 from flask import Flask, render_template_string, request
@@ -101,7 +102,7 @@ def _parse_days(form) -> int | None:
     return int(raw) if raw.isdigit() else None
 
 
-_IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
+_IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg"}
 
 
 def _collect_screenshots(static_folder: str | None) -> list[dict]:
@@ -122,7 +123,9 @@ def _collect_screenshots(static_folder: str | None) -> list[dict]:
         if os.path.splitext(fname)[1].lower() not in _IMAGE_EXTS:
             continue
         stem = os.path.splitext(fname)[0]
-        alt = stem.replace("-", " ").replace("_", " ").strip().title()
+        # Drop a leading ordering prefix like "01-" or "02_" from the caption.
+        label = re.sub(r"^\d+[-_ ]*", "", stem)
+        alt = (label or stem).replace("-", " ").replace("_", " ").strip().title()
         shots.append({"src": f"/static/screenshots/{fname}", "alt": alt})
     return shots
 
