@@ -19,6 +19,7 @@ from typing import Callable
 
 from flask import Flask, render_template_string, request
 
+from .diet_builder import build_personalized_plan, build_personalized_weekly_plan
 from .diet_planner import generate_plan, generate_weekly_plan
 from .intake import (
     IntakeError,
@@ -67,9 +68,17 @@ Generator = Callable[[UserProfile, "int | None"], dict]
 
 
 def _default_generate(profile: UserProfile, days: int | None) -> dict:
+    """Use the AI planner when an API key is set; otherwise (or if the API call
+    fails) fall back to the rule-based builder so the form always produces a plan.
+    """
+    if os.environ.get("ANTHROPIC_API_KEY"):
+        try:
+            return generate_plan(profile) if days is None else generate_weekly_plan(profile, days=days)
+        except Exception:
+            pass  # fall through to the offline builder
     if days is None:
-        return generate_plan(profile)
-    return generate_weekly_plan(profile, days=days)
+        return build_personalized_plan(profile)
+    return build_personalized_weekly_plan(profile, days=days)
 
 
 def profile_from_form(form) -> UserProfile:
