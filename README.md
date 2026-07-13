@@ -14,11 +14,18 @@ concrete one-day meal plan that hits those targets.
 ```
 src/
   profile.py       # UserProfile + calorie/macro math (Mifflin-St Jeor, TDEE)
+  intake.py        # Interactive prompts that build a UserProfile
   diet_planner.py  # Calls Claude to generate a structured meal plan
-  cli.py           # Simple command-line demo
-tests/
-  test_profile.py  # Unit tests for the math (no API key needed)
+  nutrition.py     # Food lookup + plan verification (Atwater factors)
+  data/foods.json  # Curated per-100g macro reference
+  cli.py           # Command-line entry point
+tests/             # Unit tests for the math, intake, and nutrition (no API key)
 ```
+
+The generated plan is verified after generation: each meal's stated calories are
+cross-checked against its macros (4/4/9 kcal), so inconsistent numbers get flagged
+rather than trusted blindly. The food lookup uses a bundled dataset now, behind a
+pluggable interface so a live source (e.g. USDA FoodData Central) can be added later.
 
 ## Setup
 
