@@ -57,6 +57,17 @@ python -m src.cli --week
 python -m src.cli --demo --week 5
 ```
 
+### Web UI
+
+A browser front end offers the same features (the CLI intake still works too):
+
+```bash
+python -m src.webapp     # serves http://127.0.0.1:5000
+```
+
+Fill in the form, pick a plan length, and the page shows the plan, the nutrition
+check, and the shopping list.
+
 ## Status
 
 Early stage — working scaffold. The calorie/macro math and the Claude-backed
