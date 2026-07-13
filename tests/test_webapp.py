@@ -94,8 +94,11 @@ def test_index_renders_form():
     resp = client.get("/")
     assert resp.status_code == 200
     body = resp.get_data(as_text=True)
-    assert "Generate plan" in body
+    assert "Generate my plan" in body
     assert 'name="age"' in body
+    # Friendly goal labels + descriptions are rendered (not raw enum values only).
+    assert "Lose weight" in body
+    assert "support lean muscle growth" in body
 
 
 def test_post_daily_plan_renders_results_and_shopping():

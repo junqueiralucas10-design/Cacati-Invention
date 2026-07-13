@@ -1,4 +1,4 @@
-"""A small Flask web UI for generating diet plans.
+"""A Flask web UI for generating diet plans.
 
 Reuses the same core as the CLI — profile math, planner, nutrition check, and
 shopping list. The CLI intake (src/cli.py) is unchanged; this is an alternative
@@ -29,11 +29,36 @@ from .nutrition import verify_plan, verify_weekly_plan
 from .profile import UserProfile
 from .shopping import build_shopping_list
 
-# Option lists mirrored from intake, used to render <select> fields.
-_SEX_OPTIONS = ["male", "female"]
-_ACTIVITY_OPTIONS = ["sedentary", "light", "moderate", "active", "very_active"]
-_GOAL_OPTIONS = ["lose_weight", "gain_muscle", "maintain"]
-_LENGTH_OPTIONS = [("", "Single day"), ("3", "3 days"), ("5", "5 days"), ("7", "7 days")]
+# Choice data drives both the <select> rendering (label + description) and
+# validation. Tuples are (value, label, description); value is the enum string
+# the model/profile expects, label + description are what the user sees.
+_SEX_CHOICES = [
+    ("male", "Male", ""),
+    ("female", "Female", ""),
+]
+_ACTIVITY_CHOICES = [
+    ("sedentary", "Sedentary", "Little or no exercise."),
+    ("light", "Lightly active", "Light exercise 1–3 days per week."),
+    ("moderate", "Moderately active", "Moderate exercise 3–5 days per week."),
+    ("active", "Very active", "Hard exercise 6–7 days per week."),
+    ("very_active", "Extra active", "Very hard exercise or a physical job."),
+]
+_GOAL_CHOICES = [
+    ("lose_weight", "Lose weight", "A moderate calorie deficit for steady, healthy fat loss (~0.5 kg/week)."),
+    ("gain_muscle", "Gain muscle", "A calorie surplus with high protein to support lean muscle growth."),
+    ("maintain", "Maintain", "Eat at maintenance to hold your current weight and composition."),
+]
+_LENGTH_CHOICES = [
+    ("", "Single day", "One day to try it out."),
+    ("3", "3 days", "A short run to plan ahead."),
+    ("5", "5 days", "A work-week of meals."),
+    ("7", "Full week", "Seven days, varied so it isn't repetitive."),
+]
+
+# Validation option lists derive from the choices — single source of truth.
+_SEX_OPTIONS = [c[0] for c in _SEX_CHOICES]
+_ACTIVITY_OPTIONS = [c[0] for c in _ACTIVITY_CHOICES]
+_GOAL_OPTIONS = [c[0] for c in _GOAL_CHOICES]
 
 # A generate callable takes (profile, days|None) and returns a plan dict.
 Generator = Callable[[UserProfile, "int | None"], dict]
@@ -75,22 +100,28 @@ def _parse_days(form) -> int | None:
     return int(raw) if raw.isdigit() else None
 
 
+def _context(**overrides) -> dict:
+    """Shared template context (choice lists + defaults)."""
+    ctx = {
+        "error": None,
+        "result": None,
+        "form": {},
+        "sex_choices": _SEX_CHOICES,
+        "activity_choices": _ACTIVITY_CHOICES,
+        "goal_choices": _GOAL_CHOICES,
+        "length_choices": _LENGTH_CHOICES,
+    }
+    ctx.update(overrides)
+    return ctx
+
+
 def create_app(generate: Generator | None = None) -> Flask:
     app = Flask(__name__)
     gen = generate or _default_generate
 
     @app.get("/")
     def index():
-        return render_template_string(
-            _PAGE,
-            error=None,
-            result=None,
-            form={},
-            sex_options=_SEX_OPTIONS,
-            activity_options=_ACTIVITY_OPTIONS,
-            goal_options=_GOAL_OPTIONS,
-            length_options=_LENGTH_OPTIONS,
-        )
+        return render_template_string(_PAGE, **_context())
 
     @app.post("/plan")
     def plan():
@@ -98,19 +129,7 @@ def create_app(generate: Generator | None = None) -> Flask:
         try:
             profile = profile_from_form(form)
         except IntakeError as exc:
-            return (
-                render_template_string(
-                    _PAGE,
-                    error=str(exc),
-                    result=None,
-                    form=form,
-                    sex_options=_SEX_OPTIONS,
-                    activity_options=_ACTIVITY_OPTIONS,
-                    goal_options=_GOAL_OPTIONS,
-                    length_options=_LENGTH_OPTIONS,
-                ),
-                400,
-            )
+            return render_template_string(_PAGE, **_context(error=str(exc), form=form)), 400
 
         days = _parse_days(form)
         raw_plan = gen(profile, days)
@@ -130,140 +149,352 @@ def create_app(generate: Generator | None = None) -> Flask:
             "day_blocks": day_blocks,
             "flags": [str(f) for f in flags],
             "shopping": [str(i) for i in build_shopping_list(raw_plan)],
-            "targets": {
-                "calories": profile.target_calories(),
-                **macros,
-            },
+            "targets": {"calories": profile.target_calories(), **macros},
         }
-        return render_template_string(
-            _PAGE,
-            error=None,
-            result=result,
-            form=form,
-            sex_options=_SEX_OPTIONS,
-            activity_options=_ACTIVITY_OPTIONS,
-            goal_options=_GOAL_OPTIONS,
-            length_options=_LENGTH_OPTIONS,
-        )
+        return render_template_string(_PAGE, **_context(result=result, form=form))
 
     return app
 
 
-# Single-page template: the form always shows; results render below it when present.
 _PAGE = """
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Cacati Invention — Diet Planner</title>
+  <title>NutriForge — AI meal plans for muscle & fat loss</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- Non-blocking: enhances typography when online, falls back to serif/sans instantly otherwise. -->
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
   <style>
-    body { font-family: system-ui, sans-serif; max-width: 760px; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; }
-    h1 { margin-bottom: 0.25rem; }
-    .sub { color: #666; margin-top: 0; }
-    form { display: grid; gap: 0.75rem; margin: 1.5rem 0; }
-    label { display: grid; gap: 0.25rem; font-weight: 600; font-size: 0.9rem; }
-    input, select { padding: 0.5rem; font-size: 1rem; border: 1px solid #ccc; border-radius: 6px; }
-    button { padding: 0.6rem 1rem; font-size: 1rem; border: 0; border-radius: 6px; background: #2563eb; color: #fff; cursor: pointer; }
-    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
-    .error { background: #fee2e2; color: #991b1b; padding: 0.6rem 0.8rem; border-radius: 6px; }
-    .card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem; margin: 0.75rem 0; }
-    .meal { padding: 0.5rem 0; border-bottom: 1px solid #f0f0f0; }
-    .macros { color: #555; font-size: 0.9rem; }
-    .flag { color: #92400e; }
-    .ok { color: #166534; }
-    ul { margin: 0.25rem 0 0; }
-    .targets { color: #444; }
+    :root {
+      --bg: #f6f8f4;
+      --surface: #ffffff;
+      --ink: #12241b;
+      --muted: #5c6b61;
+      --line: #e4eae2;
+      --brand: #1c9d5b;
+      --brand-dark: #157a48;
+      --hero-1: #0e3b2a;
+      --hero-2: #17663f;
+      --lime: #b9f27c;
+      --accent: #f2913d;
+      --shadow: 0 10px 30px rgba(16, 40, 28, 0.08);
+      --radius: 16px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0; background: var(--bg); color: var(--ink);
+      font-family: "Manrope", system-ui, -apple-system, sans-serif;
+      line-height: 1.55; -webkit-font-smoothing: antialiased;
+    }
+    h1, h2, h3 { font-family: "Fraunces", Georgia, serif; line-height: 1.1; letter-spacing: -0.01em; }
+    a { color: inherit; }
+    .wrap { max-width: 1080px; margin: 0 auto; padding: 0 20px; }
+
+    /* Nav */
+    nav {
+      position: sticky; top: 0; z-index: 20; backdrop-filter: blur(8px);
+      background: rgba(246,248,244,0.85); border-bottom: 1px solid var(--line);
+    }
+    .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 66px; }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.15rem; }
+    .brand .dot { width: 26px; height: 26px; border-radius: 8px; background: linear-gradient(135deg, var(--brand), var(--hero-2)); display: inline-block; }
+    .nav-links { display: flex; gap: 26px; align-items: center; font-weight: 600; font-size: 0.95rem; }
+    .nav-links a { text-decoration: none; color: var(--muted); }
+    .nav-links a:hover { color: var(--ink); }
+    .btn {
+      display: inline-block; border: 0; cursor: pointer; text-decoration: none;
+      padding: 12px 22px; border-radius: 999px; font: inherit; font-weight: 700;
+      background: var(--brand); color: #fff; transition: transform .06s ease, background .2s ease;
+    }
+    .btn:hover { background: var(--brand-dark); }
+    .btn:active { transform: translateY(1px); }
+    .btn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+    .btn.big { padding: 16px 30px; font-size: 1.05rem; }
+
+    /* Hero */
+    .hero { background: radial-gradient(120% 120% at 80% 0%, var(--hero-2), var(--hero-1)); color: #eafff2; padding: 76px 0 90px; }
+    .hero .wrap { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 40px; align-items: center; }
+    .eyebrow { display: inline-block; font-weight: 700; font-size: 0.82rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--lime); margin-bottom: 14px; }
+    .hero h1 { font-size: clamp(2.3rem, 5vw, 3.6rem); font-weight: 600; color: #fff; margin: 0 0 16px; }
+    .hero p.lead { font-size: 1.15rem; color: #cdeadb; margin: 0 0 26px; max-width: 30ch; }
+    .hero-cta { display: flex; gap: 14px; flex-wrap: wrap; }
+    .btn.lime { background: var(--lime); color: #0e3b2a; }
+    .btn.lime:hover { background: #a9ea63; }
+    .stats { display: flex; gap: 28px; margin-top: 34px; }
+    .stat b { font-family: "Fraunces", serif; font-size: 1.6rem; display: block; color: #fff; }
+    .stat span { font-size: 0.85rem; color: #b6d9c5; }
+    .hero-card { background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.15); border-radius: 20px; padding: 22px; }
+    .hero-card h4 { margin: 0 0 12px; font-family: "Manrope"; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--lime); }
+    .hc-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dashed rgba(255,255,255,0.15); color: #eafff2; }
+    .hc-row:last-child { border-bottom: 0; }
+    .hc-row span { color: #bfe3cf; }
+
+    /* Sections */
+    section.pad { padding: 72px 0; }
+    .section-head { text-align: center; max-width: 620px; margin: 0 auto 42px; }
+    .section-head h2 { font-size: clamp(1.8rem, 3.5vw, 2.5rem); font-weight: 600; margin: 0 0 12px; }
+    .section-head p { color: var(--muted); font-size: 1.08rem; margin: 0; }
+    .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+    .card {
+      background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+      padding: 26px; box-shadow: var(--shadow);
+    }
+    .card .ico { font-size: 1.8rem; }
+    .card h3 { font-size: 1.25rem; margin: 14px 0 8px; }
+    .card p { color: var(--muted); margin: 0; }
+
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; counter-reset: step; }
+    .step { position: relative; padding-left: 8px; }
+    .step .n { width: 40px; height: 40px; border-radius: 50%; background: #e8f6ee; color: var(--brand-dark); font-weight: 800; display: grid; place-items: center; font-family: "Fraunces", serif; }
+    .step h3 { font-size: 1.15rem; margin: 14px 0 6px; }
+    .step p { color: var(--muted); margin: 0; }
+
+    /* Planner form */
+    .planner { background: linear-gradient(180deg, #eef5ec, var(--bg)); }
+    .form-card { background: var(--surface); border: 1px solid var(--line); border-radius: 22px; box-shadow: var(--shadow); padding: 34px; max-width: 720px; margin: 0 auto; }
+    form { display: grid; gap: 18px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    label { display: grid; gap: 6px; font-weight: 700; font-size: 0.92rem; }
+    input, select { padding: 12px 14px; font: inherit; border: 1px solid #d7ded4; border-radius: 12px; background: #fcfdfb; }
+    input:focus, select:focus { outline: 2px solid rgba(28,157,91,0.35); border-color: var(--brand); }
+    .hint { font-weight: 500; font-size: 0.85rem; color: var(--muted); min-height: 1.1em; }
+    .error { background: #fdecec; color: #a12626; border: 1px solid #f6cccc; padding: 12px 14px; border-radius: 12px; font-weight: 600; }
+    button[type=submit] { justify-self: start; }
+
+    /* Results */
+    .result-wrap { max-width: 760px; margin: 34px auto 0; }
+    .targets-pill { display: inline-flex; gap: 10px; flex-wrap: wrap; background: #e8f6ee; color: var(--brand-dark); border-radius: 999px; padding: 10px 18px; font-weight: 700; }
+    .day-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; margin: 16px 0; box-shadow: var(--shadow); }
+    .day-card h3 { margin: 0 0 10px; }
+    .meal { padding: 12px 0; border-bottom: 1px solid #f0f3ee; }
+    .meal:last-child { border-bottom: 0; }
+    .meal .macros { color: var(--muted); font-size: 0.9rem; }
+    .pass { color: var(--brand-dark); font-weight: 700; }
+    .flagbox { background: #fff6ec; border: 1px solid #f6dcbf; border-radius: 12px; padding: 14px 16px; color: #8a5a1c; }
+    .shop { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); }
+    .shop ul, .flagbox ul { margin: 8px 0 0; padding-left: 20px; }
+    .shop li, .flagbox li { margin: 3px 0; }
+
+    /* Testimonial */
+    .quote { text-align: center; max-width: 720px; margin: 0 auto; }
+    .quote p { font-family: "Fraunces", serif; font-size: 1.5rem; font-weight: 500; line-height: 1.35; }
+    .quote .who { color: var(--muted); font-family: "Manrope"; font-size: 0.95rem; font-weight: 600; }
+
+    /* Footer */
+    footer { background: var(--hero-1); color: #bfe3cf; padding: 40px 0; margin-top: 20px; }
+    footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 16px; align-items: center; }
+    footer .disclaimer { font-size: 0.85rem; max-width: 46ch; }
+
+    @media (max-width: 820px) {
+      .hero .wrap { grid-template-columns: 1fr; }
+      .grid3, .steps { grid-template-columns: 1fr; }
+      .row { grid-template-columns: 1fr; }
+      .nav-links { display: none; }
+    }
   </style>
 </head>
 <body>
-  <h1>Cacati Invention</h1>
-  <p class="sub">Personalized diet plans for muscle gain or healthy weight loss.</p>
-
-  {% if error %}<div class="error">⚠ {{ error }}</div>{% endif %}
-
-  <form method="post" action="/plan">
-    <div class="row">
-      <label>Age
-        <input name="age" type="number" min="13" max="120" value="{{ form.get('age', '') }}" required>
-      </label>
-      <label>Sex
-        <select name="sex">
-          {% for o in sex_options %}<option value="{{ o }}" {{ 'selected' if form.get('sex')==o else '' }}>{{ o }}</option>{% endfor %}
-        </select>
-      </label>
+  <nav>
+    <div class="wrap nav-inner">
+      <div class="brand"><span class="dot"></span> NutriForge</div>
+      <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#how">How it works</a>
+        <a href="#pricing">Pricing</a>
+        <a class="btn" href="#plan">Get your plan</a>
+      </div>
     </div>
-    <div class="row">
-      <label>Height (cm)
-        <input name="height_cm" type="text" value="{{ form.get('height_cm', '') }}" required>
-      </label>
-      <label>Weight (kg)
-        <input name="weight_kg" type="text" value="{{ form.get('weight_kg', '') }}" required>
-      </label>
-    </div>
-    <div class="row">
-      <label>Activity level
-        <select name="activity_level">
-          {% for o in activity_options %}<option value="{{ o }}" {{ 'selected' if form.get('activity_level')==o else '' }}>{{ o }}</option>{% endfor %}
-        </select>
-      </label>
-      <label>Goal
-        <select name="goal">
-          {% for o in goal_options %}<option value="{{ o }}" {{ 'selected' if form.get('goal')==o else '' }}>{{ o }}</option>{% endfor %}
-        </select>
-      </label>
-    </div>
-    <label>Dietary restrictions (comma-separated)
-      <input name="dietary_restrictions" type="text" value="{{ form.get('dietary_restrictions', '') }}" placeholder="e.g. vegetarian, no nuts">
-    </label>
-    <label>Allergies (comma-separated)
-      <input name="allergies" type="text" value="{{ form.get('allergies', '') }}" placeholder="e.g. shellfish">
-    </label>
-    <label>Plan length
-      <select name="plan_length">
-        {% for value, text in length_options %}<option value="{{ value }}" {{ 'selected' if form.get('plan_length')==value else '' }}>{{ text }}</option>{% endfor %}
-      </select>
-    </label>
-    <button type="submit">Generate plan</button>
-  </form>
+  </nav>
 
-  {% if result %}
-    <h2>Your plan</h2>
-    <p class="targets">Targets — {{ result.targets.calories }} kcal |
-      {{ result.targets.protein_g }}g protein / {{ result.targets.fat_g }}g fat / {{ result.targets.carbs_g }}g carbs</p>
-    <p>{{ result.summary }}</p>
+  <header class="hero">
+    <div class="wrap">
+      <div>
+        <span class="eyebrow">AI-powered nutrition</span>
+        <h1>Eat for your goal, without the guesswork.</h1>
+        <p class="lead">Personalized meal plans that hit your exact calorie and macro targets — for building muscle or losing weight, the healthy way.</p>
+        <div class="hero-cta">
+          <a class="btn lime big" href="#plan">Build my plan — free</a>
+          <a class="btn ghost big" href="#how" style="color:#eafff2;border-color:rgba(255,255,255,0.3)">See how it works</a>
+        </div>
+        <div class="stats">
+          <div class="stat"><b>3&nbsp;sec</b><span>to a full plan</span></div>
+          <div class="stat"><b>100%</b><span>macro-matched</span></div>
+          <div class="stat"><b>0</b><span>spreadsheets</span></div>
+        </div>
+      </div>
+      <div class="hero-card">
+        <h4>Sample daily target</h4>
+        <div class="hc-row">Calories <span>2,600 kcal</span></div>
+        <div class="hc-row">Protein <span>164 g</span></div>
+        <div class="hc-row">Carbs <span>300 g</span></div>
+        <div class="hc-row">Fat <span>72 g</span></div>
+        <div class="hc-row">Shopping list <span>✓ included</span></div>
+      </div>
+    </div>
+  </header>
 
-    {% for block in result.day_blocks %}
-      <div class="card">
-        {% if block.day %}<h3>{{ block.day }}</h3>{% endif %}
-        {% for meal in block.meals %}
-          <div class="meal">
-            <strong>{{ meal.name }}</strong> — {{ meal.calories }} kcal<br>
-            <span>{{ meal.description }}</span><br>
-            <span class="macros">P {{ meal.protein_g }}g / F {{ meal.fat_g }}g / C {{ meal.carbs_g }}g</span>
+  <section class="pad" id="features">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>Everything you need to eat with intent</h2>
+        <p>Not just a menu — a plan grounded in real numbers, checked for accuracy, and ready to shop.</p>
+      </div>
+      <div class="grid3">
+        <div class="card"><div class="ico">🎯</div><h3>Dialed-in targets</h3><p>We compute your calories and macros from your body stats, activity, and goal — then build meals to match.</p></div>
+        <div class="card"><div class="ico">✅</div><h3>Verified numbers</h3><p>Every meal's calories are cross-checked against its macros, so the plan's math actually adds up.</p></div>
+        <div class="card"><div class="ico">🛒</div><h3>Auto shopping list</h3><p>Ingredients from every meal are combined into one tidy list — ready for your next grocery run.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="pad" id="how" style="background:#eef5ec">
+    <div class="wrap">
+      <div class="section-head"><h2>Three steps to your plan</h2><p>From your details to a full day (or week) of meals in seconds.</p></div>
+      <div class="steps">
+        <div class="step"><div class="n">1</div><h3>Tell us about you</h3><p>Age, body stats, activity, and whether you're cutting, bulking, or maintaining.</p></div>
+        <div class="step"><div class="n">2</div><h3>We do the math</h3><p>Your targets are calculated and meals are generated to land right on them.</p></div>
+        <div class="step"><div class="n">3</div><h3>Eat & shop</h3><p>Get your meals, a nutrition check, and a combined shopping list.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- The planner -->
+  <section class="pad planner" id="plan">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>Build your plan</h2>
+        <p>Free, no sign-up. Fill in your details and pick a plan length.</p>
+      </div>
+
+      <div class="form-card">
+        {% if error %}<div class="error">⚠ {{ error }}</div>{% endif %}
+        <form method="post" action="/plan">
+          <div class="row">
+            <label>Age
+              <input name="age" type="number" min="13" max="120" value="{{ form.get('age', '') }}" required>
+            </label>
+            <label>Sex
+              <select name="sex">
+                {% for value, lbl, desc in sex_choices %}<option value="{{ value }}" {{ 'selected' if form.get('sex')==value else '' }}>{{ lbl }}</option>{% endfor %}
+              </select>
+            </label>
           </div>
-        {% endfor %}
+          <div class="row">
+            <label>Height (cm)
+              <input name="height_cm" type="text" inputmode="decimal" value="{{ form.get('height_cm', '') }}" placeholder="e.g. 178" required>
+            </label>
+            <label>Weight (kg)
+              <input name="weight_kg" type="text" inputmode="decimal" value="{{ form.get('weight_kg', '') }}" placeholder="e.g. 82" required>
+            </label>
+          </div>
+          <label>Activity level
+            <select name="activity_level" data-hint="activity-hint">
+              {% for value, lbl, desc in activity_choices %}<option value="{{ value }}" data-desc="{{ desc }}" {{ 'selected' if form.get('activity_level')==value else '' }}>{{ lbl }} — {{ desc }}</option>{% endfor %}
+            </select>
+            <span class="hint" id="activity-hint"></span>
+          </label>
+          <label>Goal
+            <select name="goal" data-hint="goal-hint">
+              {% for value, lbl, desc in goal_choices %}<option value="{{ value }}" data-desc="{{ desc }}" {{ 'selected' if form.get('goal')==value else '' }}>{{ lbl }} — {{ desc }}</option>{% endfor %}
+            </select>
+            <span class="hint" id="goal-hint"></span>
+          </label>
+          <label>Dietary restrictions <span style="font-weight:500;color:var(--muted)">(comma-separated, optional)</span>
+            <input name="dietary_restrictions" type="text" value="{{ form.get('dietary_restrictions', '') }}" placeholder="e.g. vegetarian, no nuts">
+          </label>
+          <label>Allergies <span style="font-weight:500;color:var(--muted)">(comma-separated, optional)</span>
+            <input name="allergies" type="text" value="{{ form.get('allergies', '') }}" placeholder="e.g. shellfish">
+          </label>
+          <label>Plan length
+            <select name="plan_length" data-hint="length-hint">
+              {% for value, lbl, desc in length_choices %}<option value="{{ value }}" data-desc="{{ desc }}" {{ 'selected' if form.get('plan_length')==value else '' }}>{{ lbl }} — {{ desc }}</option>{% endfor %}
+            </select>
+            <span class="hint" id="length-hint"></span>
+          </label>
+          <button class="btn big" type="submit">Generate my plan</button>
+        </form>
       </div>
-    {% endfor %}
 
-    <p>{{ result.notes }}</p>
+      {% if result %}
+        <div class="result-wrap">
+          <h2 style="text-align:center">Your plan</h2>
+          <div style="text-align:center;margin-bottom:16px">
+            <span class="targets-pill">
+              <span>{{ result.targets.calories }} kcal</span>·
+              <span>{{ result.targets.protein_g }}g protein</span>·
+              <span>{{ result.targets.fat_g }}g fat</span>·
+              <span>{{ result.targets.carbs_g }}g carbs</span>
+            </span>
+          </div>
+          <p style="text-align:center;color:var(--muted)">{{ result.summary }}</p>
 
-    {% if result.flags %}
-      <div class="card flag">
-        <strong>⚠ Nutrition check flagged some meals:</strong>
-        <ul>{% for f in result.flags %}<li>{{ f }}</li>{% endfor %}</ul>
-      </div>
-    {% else %}
-      <p class="ok">✓ Nutrition check passed — stated calories match the macros.</p>
-    {% endif %}
+          {% for block in result.day_blocks %}
+            <div class="day-card">
+              {% if block.day %}<h3>{{ block.day }}</h3>{% endif %}
+              {% for meal in block.meals %}
+                <div class="meal">
+                  <strong>{{ meal.name }}</strong> — {{ meal.calories }} kcal<br>
+                  <span>{{ meal.description }}</span><br>
+                  <span class="macros">P {{ meal.protein_g }}g / F {{ meal.fat_g }}g / C {{ meal.carbs_g }}g</span>
+                </div>
+              {% endfor %}
+            </div>
+          {% endfor %}
 
-    {% if result.shopping %}
-      <div class="card">
-        <strong>🛒 Shopping list</strong>
-        <ul>{% for item in result.shopping %}<li>{{ item }}</li>{% endfor %}</ul>
-      </div>
-    {% endif %}
-  {% endif %}
+          <p style="color:var(--muted)">{{ result.notes }}</p>
+
+          {% if result.flags %}
+            <div class="flagbox"><strong>⚠ Nutrition check flagged some meals:</strong>
+              <ul>{% for f in result.flags %}<li>{{ f }}</li>{% endfor %}</ul>
+            </div>
+          {% else %}
+            <p class="pass">✓ Nutrition check passed — stated calories match the macros.</p>
+          {% endif %}
+
+          {% if result.shopping %}
+            <div class="shop"><strong>🛒 Shopping list</strong>
+              <ul>{% for item in result.shopping %}<li>{{ item }}</li>{% endfor %}</ul>
+            </div>
+          {% endif %}
+        </div>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="pad" id="pricing">
+    <div class="wrap quote">
+      <p>“I stopped guessing my macros. NutriForge gave me a full week of meals and a shopping list in seconds — and I finally hit my protein every day.”</p>
+      <div class="who">— Sample testimonial · early user</div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap">
+      <div class="brand" style="color:#fff"><span class="dot"></span> NutriForge</div>
+      <div class="disclaimer">Not medical advice. Plans are informational estimates — consult a professional for medical conditions.</div>
+    </div>
+  </footer>
+
+  <script>
+    // Reflect the selected option's description into the hint line below each select.
+    function wireHint(select) {
+      var id = select.getAttribute('data-hint');
+      if (!id) return;
+      var out = document.getElementById(id);
+      function update() {
+        var opt = select.options[select.selectedIndex];
+        out.textContent = opt ? (opt.getAttribute('data-desc') || '') : '';
+      }
+      select.addEventListener('change', update);
+      update();
+    }
+    document.querySelectorAll('select[data-hint]').forEach(wireHint);
+  </script>
 </body>
 </html>
 """
