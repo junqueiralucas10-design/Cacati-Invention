@@ -11,6 +11,7 @@ import sys
 
 from .diet_planner import generate_plan
 from .intake import collect_profile
+from .nutrition import verify_plan
 from .profile import UserProfile
 
 
@@ -48,6 +49,15 @@ def main(argv: list[str] | None = None) -> None:
             f"    P {meal['protein_g']}g / F {meal['fat_g']}g / C {meal['carbs_g']}g\n"
         )
     print(plan["notes"])
+
+    # Cross-check the numbers against Atwater physics before trusting them.
+    discrepancies = verify_plan(plan)
+    if discrepancies:
+        print("\n⚠ Nutrition check flagged some meals (stated vs computed calories):")
+        for d in discrepancies:
+            print(f"   - {d}")
+    else:
+        print("\n✓ Nutrition check passed — stated calories match the macros.")
 
 
 if __name__ == "__main__":
