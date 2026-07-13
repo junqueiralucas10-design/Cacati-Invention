@@ -6,8 +6,19 @@ build muscle or lose weight in a healthy, sustainable way.
 ## What it does
 
 Given a user's profile (goal, body stats, activity level, dietary restrictions),
-the app estimates daily calorie and macro targets, then uses Claude to generate a
-concrete one-day meal plan that hits those targets.
+the app estimates daily calorie and macro targets, then builds a concrete meal
+plan that hits those targets.
+
+There are two planners behind the same interface:
+
+- **Rule-based builder** (`src/diet_builder.py`) — constructs a personalized diet
+  from the bundled food database, respecting the person's goal, dietary
+  restrictions, and allergies. **No API key required.**
+- **AI planner** (`src/diet_planner.py`) — uses Claude for richer, more varied
+  plans when an `ANTHROPIC_API_KEY` is configured.
+
+The web UI uses the AI planner when a key is set and falls back to the rule-based
+builder otherwise, so submitting the form always returns a plan.
 
 ## Project layout
 
@@ -15,11 +26,14 @@ concrete one-day meal plan that hits those targets.
 src/
   profile.py       # UserProfile + calorie/macro math (Mifflin-St Jeor, TDEE)
   intake.py        # Interactive prompts that build a UserProfile
+  diet_builder.py  # Rule-based personalized diet from the food DB (no API key)
   diet_planner.py  # Calls Claude to generate a structured meal plan
   nutrition.py     # Food lookup + plan verification (Atwater factors)
-  data/foods.json  # Curated per-100g macro reference
+  shopping.py      # Consolidated shopping list from a plan
+  data/foods.json  # Curated per-100g macros + group/diet/allergen tags
+  webapp.py        # Flask web UI
   cli.py           # Command-line entry point
-tests/             # Unit tests for the math, intake, and nutrition (no API key)
+tests/             # Unit tests (no API key required)
 ```
 
 The generated plan is verified after generation: each meal's stated calories are
