@@ -27,6 +27,10 @@ cross-checked against its macros (4/4/9 kcal), so inconsistent numbers get flagg
 rather than trusted blindly. The food lookup uses a bundled dataset now, behind a
 pluggable interface so a live source (e.g. USDA FoodData Central) can be added later.
 
+Every plan (daily or weekly) also produces a consolidated **shopping list** —
+ingredients are aggregated across all meals, combining matching item+unit pairs
+and summing quantities (`src/shopping.py`).
+
 ## Setup
 
 ```bash
