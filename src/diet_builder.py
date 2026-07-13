@@ -203,11 +203,16 @@ def _build_meal(name: str, cal_share: float, targets: dict, foods: list[Food], r
     fruits = _pool(foods, "fruit", meal_key)
     fats = _pool(foods, "fat", meal_key)
 
-    # 1. Primary protein, sized to the meal's protein share.
+    def cal_now() -> float:
+        return calories_from_macros(totals["protein_g"], totals["fat_g"], totals["carbs_g"])
+
+    # 1. Primary protein, sized to the meal's protein share — but capped so a
+    #    low-density protein (e.g. milk) can't consume the meal's whole budget.
     p1 = _pick(proteins, rot)
     if p1:
         need = meal_protein / (p1.protein_g / 100) if p1.protein_g else p1.min_g
-        add(p1, need)
+        cal_cap = (meal_cal * 0.60) / (p1.calories / 100) if p1.calories else need
+        add(p1, min(need, cal_cap))
 
     # 2. Secondary protein when the primary can't cover it (natural except at snack).
     if meal_key != "snack" and len(proteins) > 1:
@@ -228,17 +233,29 @@ def _build_meal(name: str, cal_share: float, targets: dict, foods: list[Food], r
         if fr:
             add(fr, fr.min_g)
 
-    # 4. Fill remaining calories with a carb source.
-    cal_so_far = calories_from_macros(totals["protein_g"], totals["fat_g"], totals["carbs_g"])
-    c1 = _pick(carbs, rot)
-    if c1 and meal_cal - cal_so_far > 50:
-        add(c1, (meal_cal - cal_so_far) / (c1.calories / 100))
-
-    # 5. Top up fat toward the meal's fat share.
+    # 4. Top up fat toward the meal's fat share BEFORE carbs, so carbs are the
+    #    final, precise calorie filler.
     ft = _pick(fats, rot)
     fat_deficit = meal_fat - totals["fat_g"]
     if ft and fat_deficit > 4 and ft.fat_g:
         add(ft, fat_deficit / (ft.fat_g / 100))
+
+    # 5. Fill the remaining calories with up to two DISTINCT carb sources. Carbs
+    #    are gram-based and flexible, so this lands the meal close to its target
+    #    even when the first carb hits its portion cap. The distinct-type guard
+    #    avoids awkward pairings like brown rice + white rice.
+    carb_words: set[str] = set()
+    for k in range(len(carbs) + 1):
+        if meal_cal - cal_now() < 60 or len(carb_words) >= 2:
+            break
+        c = _pick(carbs, rot + k)
+        if c is None or id(c) in used_ids:
+            continue
+        word = c.short_name().split()[-1]  # e.g. "rice", "potato", "quinoa"
+        if word in carb_words:
+            continue
+        add(c, (meal_cal - cal_now()) / (c.calories / 100))
+        carb_words.add(word)
 
     protein_g = round(totals["protein_g"])
     fat_g = round(totals["fat_g"])

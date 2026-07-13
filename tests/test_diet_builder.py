@@ -43,9 +43,27 @@ def test_daily_totals_are_near_targets():
     plan = build_personalized_plan(profile)
     total_cal = sum(m["calories"] for m in plan["meals"])
     total_pro = sum(m["protein_g"] for m in plan["meals"])
-    # Within ~25% of target calories and protein — a rule-based estimate, not exact.
-    assert abs(total_cal - profile.target_calories()) / profile.target_calories() < 0.25
-    assert total_pro >= profile.target_macros()["protein_g"] * 0.75
+    assert abs(total_cal - profile.target_calories()) / profile.target_calories() < 0.12
+    assert total_pro >= profile.target_macros()["protein_g"] * 0.85
+
+
+@pytest.mark.parametrize(
+    "kw",
+    [
+        dict(goal="gain_muscle", activity_level="active"),
+        dict(goal="lose_weight", activity_level="light"),
+        dict(goal="maintain", sex="female", weight_kg=60, height_cm=165),
+        dict(goal="gain_muscle", dietary_restrictions=["vegetarian"]),
+        dict(goal="lose_weight", dietary_restrictions=["vegan"]),
+    ],
+)
+def test_calorie_precision_across_profiles(kw):
+    profile = _profile(**kw)
+    plan = build_personalized_plan(profile)
+    total = sum(m["calories"] for m in plan["meals"])
+    target = profile.target_calories()
+    # The rule-based engine should land within 12% of the calorie target.
+    assert abs(total - target) / target < 0.12, (total, target)
 
 
 def test_vegetarian_excludes_meat_and_fish():
