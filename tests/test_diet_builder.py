@@ -68,10 +68,10 @@ def test_calorie_precision_across_profiles(kw):
 
 def test_vegetarian_excludes_meat_and_fish():
     foods = _filter_foods(_load_foods(), _profile(dietary_restrictions=["vegetarian"]))
-    names = [f.name for f in foods]
-    assert not any("chicken" in n or "beef" in n or "salmon" in n for n in names)
-    # eggs/dairy still allowed for a vegetarian
-    assert any("egg" in n for n in names)
+    names = [f.name.lower() for f in foods]
+    assert not any("frango" in n or "carne" in n or "tilápia" in n for n in names)
+    # ovos/laticínios still allowed for a vegetarian
+    assert any("ovos" in n for n in names)
 
 
 def test_vegan_excludes_animal_products():
@@ -87,7 +87,19 @@ def test_nut_allergy_excludes_nuts():
         for m in plan["meals"]
         for ing in m["ingredients"]
     )
-    assert "almond" not in text and "peanut" not in text
+    assert "amendoim" not in text and "castanha" not in text
+
+
+def test_portuguese_restrictions_work():
+    # Portuguese terms should filter just like the English ones.
+    vegan = _filter_foods(_load_foods(), _profile(dietary_restrictions=["vegano"]))
+    assert {f.diet for f in vegan} == {"vegan"}
+
+    plan = build_personalized_plan(_profile(allergies=["sem lactose"]))
+    text = " ".join(
+        ing["item"].lower() for m in plan["meals"] for ing in m["ingredients"]
+    )
+    assert "leite" not in text and "queijo" not in text and "iogurte" not in text
 
 
 def test_impossible_restrictions_raise():
@@ -124,14 +136,14 @@ def _meal(plan, name):
 def test_breakfast_avoids_dinner_only_foods():
     plan = build_personalized_plan(_profile())
     breakfast_items = " ".join(i["item"].lower() for i in _meal(plan, "Breakfast")["ingredients"])
-    for bad in ("salmon", "broccoli", "chicken", "beef", "rice", "tuna"):
+    for bad in ("tilápia", "brócolis", "frango", "carne", "arroz", "feijão"):
         assert bad not in breakfast_items
 
 
 def test_dinner_avoids_breakfast_only_foods():
     plan = build_personalized_plan(_profile())
     dinner_items = " ".join(i["item"].lower() for i in _meal(plan, "Dinner")["ingredients"])
-    for bad in ("oats", "banana", "cereal", "bagel"):
+    for bad in ("aveia", "banana", "pão francês", "tapioca"):
         assert bad not in dinner_items
 
 
@@ -161,14 +173,15 @@ def test_more_meals_still_hits_calorie_target():
 
 
 def test_portions_use_natural_units():
-    # e.g. eggs are counted ("" unit), not given in grams.
+    # e.g. ovos are counted ("" unit), not given in grams.
     plan = build_personalized_plan(_profile())
     units = {i["unit"] for m in plan["meals"] for i in m["ingredients"]}
-    assert "" in units or "tbsp" in units or "slice" in units  # some countable/measured unit used
+    # some countable/measured unit is used (ovos/banana "", azeite "colher de sopa", leite "copo")
+    assert any(u in units for u in ("", "colher de sopa", "copo", "scoop"))
 
-    eggs = [
-        i for m in plan["meals"] for i in m["ingredients"] if i["item"].lower() == "eggs"
+    ovos = [
+        i for m in plan["meals"] for i in m["ingredients"] if i["item"].lower() == "ovos"
     ]
-    if eggs:  # when eggs are chosen, they're a small whole count, not hundreds of grams
-        assert eggs[0]["unit"] == ""
-        assert 1 <= eggs[0]["quantity"] <= 4
+    if ovos:  # when eggs are chosen, they're a small whole count, not hundreds of grams
+        assert ovos[0]["unit"] == ""
+        assert 1 <= ovos[0]["quantity"] <= 4

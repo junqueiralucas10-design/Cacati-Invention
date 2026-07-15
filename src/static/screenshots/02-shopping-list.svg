@@ -23,28 +23,28 @@
   <!-- col 1 -->
   <g font-size="17" fill="#0b1437">
     <rect x="96" y="222" width="20" height="20" rx="5" fill="none" stroke="#ff6a1a" stroke-width="2"/>
-    <text x="132" y="238">200 g Chicken breast</text>
+    <text x="132" y="238">200 g Frango grelhado</text>
     <rect x="96" y="302" width="20" height="20" rx="5" fill="none" stroke="#ff6a1a" stroke-width="2"/>
-    <text x="132" y="318">150 g Brown rice</text>
+    <text x="132" y="318">200 g Arroz</text>
     <rect x="96" y="382" width="20" height="20" rx="5" fill="none" stroke="#ff6a1a" stroke-width="2"/>
-    <text x="132" y="398">180 g Greek yogurt</text>
+    <text x="132" y="398">250 g Feijão</text>
     <rect x="96" y="462" width="20" height="20" rx="5" fill="none" stroke="#ff6a1a" stroke-width="2"/>
-    <text x="132" y="478">80 g Rolled oats</text>
+    <text x="132" y="478">300 g Mandioca</text>
     <rect x="96" y="542" width="20" height="20" rx="5" fill="none" stroke="#ff6a1a" stroke-width="2"/>
-    <text x="132" y="558">2 pcs Banana</text>
+    <text x="132" y="558">4 Ovos</text>
   </g>
   <!-- col 2 -->
   <g font-size="17" fill="#0b1437">
     <rect x="524" y="222" width="20" height="20" rx="5" fill="none" stroke="#ff6a1a" stroke-width="2"/>
-    <text x="560" y="238">150 g Salmon</text>
+    <text x="560" y="238">150 g Tilápia</text>
     <rect x="524" y="302" width="20" height="20" rx="5" fill="none" stroke="#ff6a1a" stroke-width="2"/>
-    <text x="560" y="318">200 g Sweet potato</text>
+    <text x="560" y="318">250 g Batata-doce</text>
     <rect x="524" y="382" width="20" height="20" rx="5" fill="none" stroke="#ff6a1a" stroke-width="2"/>
-    <text x="560" y="398">100 g Spinach</text>
+    <text x="560" y="398">200 g Iogurte natural</text>
     <rect x="524" y="462" width="20" height="20" rx="5" fill="none" stroke="#ff6a1a" stroke-width="2"/>
-    <text x="560" y="478">30 g Almonds</text>
+    <text x="560" y="478">1 Banana</text>
     <rect x="524" y="542" width="20" height="20" rx="5" fill="none" stroke="#ff6a1a" stroke-width="2"/>
-    <text x="560" y="558">15 ml Olive oil</text>
+    <text x="560" y="558">1 col. Azeite</text>
   </g>
 
   <!-- dividers -->

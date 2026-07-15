@@ -13,7 +13,10 @@ There are two planners behind the same interface:
 
 - **Rule-based builder** (`src/diet_builder.py`) — constructs a personalized diet
   from the bundled food database, respecting the person's goal, dietary
-  restrictions, and allergies. **No API key required.**
+  restrictions, and allergies. The database is built around foods common in
+  **Brazil** (arroz, feijão, frango, ovos, tapioca, mandioca, frutas…), and
+  restriction terms work in both English and Portuguese (e.g. `vegano`,
+  `sem lactose`, `sem glúten`). **No API key required.**
 - **AI planner** (`src/diet_planner.py`) — uses Claude for richer, more varied
   plans when an `ANTHROPIC_API_KEY` is configured.
 

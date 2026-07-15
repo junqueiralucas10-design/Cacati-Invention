@@ -24,6 +24,7 @@ _DATA_FILE = Path(__file__).parent / "data" / "foods.json"
 _DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
 _ALLERGEN_WORDS = {
+    # English
     "nut": "nuts", "nuts": "nuts", "peanut": "nuts", "peanuts": "nuts", "almond": "nuts",
     "dairy": "dairy", "milk": "dairy", "lactose": "dairy", "cheese": "dairy",
     "gluten": "gluten", "wheat": "gluten",
@@ -31,6 +32,13 @@ _ALLERGEN_WORDS = {
     "shellfish": "shellfish",
     "egg": "eggs", "eggs": "eggs",
     "soy": "soy",
+    # Portuguese (Brazil)
+    "amendoim": "nuts", "castanha": "nuts", "castanhas": "nuts", "noz": "nuts", "nozes": "nuts",
+    "leite": "dairy", "queijo": "dairy", "lactose": "dairy",
+    "glúten": "gluten", "gluten": "gluten", "trigo": "gluten",
+    "peixe": "fish",
+    "ovo": "eggs", "ovos": "eggs",
+    "soja": "soy",
 }
 
 
@@ -85,22 +93,25 @@ def _parse_restrictions(tokens: list[str]):
     low = [t.strip().lower() for t in tokens if t.strip()]
     joined = " ".join(low)
 
-    if "vegan" in joined:
+    if "vegan" in joined or "vegano" in joined:
         allowed_diets = {"vegan"}
-    elif "vegetarian" in joined:
+    elif "vegetarian" in joined or "vegetariano" in joined:
         allowed_diets = {"vegan", "vegetarian"}
-    elif "pescatarian" in joined:
+    elif "pescatarian" in joined or "pescetariano" in joined:
         allowed_diets = {"vegan", "vegetarian"}
     else:
         allowed_diets = {"vegan", "vegetarian", "omnivore"}
-    pescatarian = "pescatarian" in joined
+    pescatarian = "pescatarian" in joined or "pescetariano" in joined
 
     excluded_allergens: set[str] = set()
     name_excludes: set[str] = set()
     for tok in low:
         keyword = tok
+        # "no X" (English) / "sem X" (Portuguese) / "X-free"
         if keyword.startswith("no "):
             keyword = keyword[3:]
+        elif keyword.startswith("sem "):
+            keyword = keyword[4:]
         keyword = keyword.replace("-free", "").replace(" free", "").strip()
         for word in keyword.split():
             if word in _ALLERGEN_WORDS:
@@ -108,8 +119,9 @@ def _parse_restrictions(tokens: list[str]):
         for word in tok.split():
             if word in _ALLERGEN_WORDS:
                 excluded_allergens.add(_ALLERGEN_WORDS[word])
-        if (tok.startswith("no ") or "free" in tok) and len(keyword) >= 3:
-            if keyword not in ("vegan", "vegetarian", "pescatarian", "gluten", "dairy"):
+        if (tok.startswith(("no ", "sem ")) or "free" in tok) and len(keyword) >= 3:
+            if keyword not in ("vegan", "vegano", "vegetarian", "vegetariano",
+                               "pescatarian", "gluten", "glúten", "dairy"):
                 name_excludes.add(keyword)
 
     return allowed_diets, excluded_allergens, name_excludes, pescatarian
@@ -214,15 +226,19 @@ def _build_meal(name: str, cal_share: float, targets: dict, foods: list[Food], r
         cal_cap = (meal_cal * 0.60) / (p1.calories / 100) if p1.calories else need
         add(p1, min(need, cal_cap))
 
-    # 2. Secondary protein when the primary can't cover it (natural except at snack).
+    # 2. Secondary protein when the primary can't cover it — but only if there's
+    #    calorie room, and sized to fit it, so low-density plant proteins don't
+    #    blow past the meal's budget (matters for high-protein, low-calorie diets).
     if meal_key != "snack" and len(proteins) > 1:
         deficit = meal_protein - totals["protein_g"]
-        if deficit > 12:
+        budget = meal_cal - cal_now()
+        if deficit > 12 and budget > 120:
             for k in range(1, len(proteins) + 1):
                 cand = proteins[(rot + k) % len(proteins)]
                 if id(cand) not in used_ids:
-                    need = deficit / (cand.protein_g / 100) if cand.protein_g else cand.min_g
-                    add(cand, need)
+                    by_protein = deficit / (cand.protein_g / 100) if cand.protein_g else cand.min_g
+                    by_budget = (budget * 0.8) / (cand.calories / 100) if cand.calories else by_protein
+                    add(cand, min(by_protein, by_budget))
                     break
 
     # 3. A vegetable (lunch/dinner) or fruit (breakfast/snack).
@@ -234,11 +250,14 @@ def _build_meal(name: str, cal_share: float, targets: dict, foods: list[Food], r
             add(fr, fr.min_g)
 
     # 4. Top up fat toward the meal's fat share BEFORE carbs, so carbs are the
-    #    final, precise calorie filler.
+    #    final, precise calorie filler — capped by the remaining calorie budget.
     ft = _pick(fats, rot)
     fat_deficit = meal_fat - totals["fat_g"]
-    if ft and fat_deficit > 4 and ft.fat_g:
-        add(ft, fat_deficit / (ft.fat_g / 100))
+    budget = meal_cal - cal_now()
+    if ft and fat_deficit > 4 and ft.fat_g and budget > 40:
+        by_fat = fat_deficit / (ft.fat_g / 100)
+        by_budget = budget / (ft.calories / 100) if ft.calories else by_fat
+        add(ft, min(by_fat, by_budget))
 
     # 5. Fill the remaining calories with up to two DISTINCT carb sources. Carbs
     #    are gram-based and flexible, so this lands the meal close to its target

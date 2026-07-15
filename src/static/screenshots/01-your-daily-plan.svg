@@ -25,23 +25,23 @@
 
   <!-- meal 1 -->
   <rect x="64" y="212" width="872" height="104" rx="14" fill="#ffffff" stroke="#e6e9f2"/>
-  <text x="88" y="246" font-size="18" font-weight="700" fill="#0b1437">Greek yogurt &amp; oats bowl</text>
+  <text x="88" y="246" font-size="18" font-weight="700" fill="#0b1437">Ovos com batata-doce e banana</text>
   <text x="912" y="246" text-anchor="end" font-size="16" font-weight="700" fill="#5a6480">420 kcal</text>
-  <text x="88" y="272" font-size="14" fill="#5a6480">Greek yogurt, rolled oats, banana, and a handful of almonds.</text>
+  <text x="88" y="272" font-size="14" fill="#5a6480">4 ovos mexidos, batata-doce cozida e uma banana.</text>
   <text x="88" y="296" font-size="13" font-weight="600" fill="#8a93b2">P 34g  /  F 12g  /  C 48g</text>
 
   <!-- meal 2 -->
   <rect x="64" y="332" width="872" height="104" rx="14" fill="#ffffff" stroke="#e6e9f2"/>
-  <text x="88" y="366" font-size="18" font-weight="700" fill="#0b1437">Grilled chicken &amp; brown rice</text>
+  <text x="88" y="366" font-size="18" font-weight="700" fill="#0b1437">Frango com arroz e feijão</text>
   <text x="912" y="366" text-anchor="end" font-size="16" font-weight="700" fill="#5a6480">620 kcal</text>
-  <text x="88" y="392" font-size="14" fill="#5a6480">Chicken breast, brown rice, broccoli, a drizzle of olive oil.</text>
+  <text x="88" y="392" font-size="14" fill="#5a6480">Frango grelhado, arroz, feijão, couve e um fio de azeite.</text>
   <text x="88" y="416" font-size="13" font-weight="600" fill="#8a93b2">P 55g  /  F 18g  /  C 60g</text>
 
   <!-- meal 3 -->
   <rect x="64" y="452" width="872" height="104" rx="14" fill="#ffffff" stroke="#e6e9f2"/>
-  <text x="88" y="486" font-size="18" font-weight="700" fill="#0b1437">Salmon, sweet potato &amp; spinach</text>
+  <text x="88" y="486" font-size="18" font-weight="700" fill="#0b1437">Tilápia com mandioca e salada</text>
   <text x="912" y="486" text-anchor="end" font-size="16" font-weight="700" fill="#5a6480">560 kcal</text>
-  <text x="88" y="512" font-size="14" fill="#5a6480">Baked salmon with roasted sweet potato and sautéed spinach.</text>
+  <text x="88" y="512" font-size="14" fill="#5a6480">Tilápia grelhada, mandioca cozida, tomate e cenoura.</text>
   <text x="88" y="536" font-size="13" font-weight="600" fill="#8a93b2">P 42g  /  F 22g  /  C 40g</text>
 
   <!-- nutrition check -->
