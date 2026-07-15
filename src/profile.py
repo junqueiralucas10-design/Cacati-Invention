@@ -37,6 +37,7 @@ class UserProfile:
     goal: Goal
     dietary_restrictions: list[str] = field(default_factory=list)  # e.g. ["vegetarian", "no nuts"]
     allergies: list[str] = field(default_factory=list)
+    meals_per_day: int | None = None  # 3-6; None -> pick a sensible default from calories
 
     def bmr(self) -> float:
         """Basal metabolic rate via the Mifflin-St Jeor equation (kcal/day)."""

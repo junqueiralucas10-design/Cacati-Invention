@@ -57,6 +57,12 @@ _LENGTH_CHOICES = [
     ("5", "5 days", "A work-week of meals."),
     ("7", "Full week", "Seven days, varied so it isn't repetitive."),
 ]
+_MEALS_CHOICES = [
+    ("3", "3 meals", "Breakfast, lunch, dinner."),
+    ("4", "4 meals", "Three meals plus an afternoon snack."),
+    ("5", "5 meals", "Three meals plus a morning and afternoon snack."),
+    ("6", "6 meals", "Three meals plus three snacks through the day."),
+]
 
 # Validation option lists derive from the choices — single source of truth.
 _SEX_OPTIONS = [c[0] for c in _SEX_CHOICES]
@@ -94,6 +100,8 @@ def profile_from_form(form) -> UserProfile:
     goal = parse_choice(form.get("goal", ""), _GOAL_OPTIONS)
     restrictions = parse_list(form.get("dietary_restrictions", ""))
     allergies = parse_list(form.get("allergies", ""))
+    meals_raw = (form.get("meals_per_day") or "").strip()
+    meals_per_day = int(meals_raw) if meals_raw.isdigit() else None
     return UserProfile(
         age=age,
         sex=sex,  # type: ignore[arg-type]
@@ -103,6 +111,7 @@ def profile_from_form(form) -> UserProfile:
         goal=goal,  # type: ignore[arg-type]
         dietary_restrictions=restrictions,
         allergies=allergies,
+        meals_per_day=meals_per_day,
     )
 
 
@@ -150,6 +159,7 @@ def _context(**overrides) -> dict:
         "activity_choices": _ACTIVITY_CHOICES,
         "goal_choices": _GOAL_CHOICES,
         "length_choices": _LENGTH_CHOICES,
+        "meals_choices": _MEALS_CHOICES,
     }
     ctx.update(overrides)
     return ctx
@@ -498,12 +508,20 @@ _PAGE = """
           <label>Allergies <span style="font-weight:500;color:var(--muted)">(comma-separated, optional)</span>
             <input name="allergies" type="text" value="{{ form.get('allergies', '') }}" placeholder="e.g. shellfish">
           </label>
-          <label>Plan length
-            <select name="plan_length" data-hint="length-hint">
-              {% for value, lbl, desc in length_choices %}<option value="{{ value }}" data-desc="{{ desc }}" {{ 'selected' if form.get('plan_length')==value else '' }}>{{ lbl }} — {{ desc }}</option>{% endfor %}
-            </select>
-            <span class="hint" id="length-hint"></span>
-          </label>
+          <div class="row">
+            <label>Meals per day
+              <select name="meals_per_day" data-hint="meals-hint">
+                {% for value, lbl, desc in meals_choices %}<option value="{{ value }}" data-desc="{{ desc }}" {{ 'selected' if (form.get('meals_per_day')==value or (not form.get('meals_per_day') and value=='4')) else '' }}>{{ lbl }}</option>{% endfor %}
+              </select>
+              <span class="hint" id="meals-hint"></span>
+            </label>
+            <label>Plan length
+              <select name="plan_length" data-hint="length-hint">
+                {% for value, lbl, desc in length_choices %}<option value="{{ value }}" data-desc="{{ desc }}" {{ 'selected' if form.get('plan_length')==value else '' }}>{{ lbl }} — {{ desc }}</option>{% endfor %}
+              </select>
+              <span class="hint" id="length-hint"></span>
+            </label>
+          </div>
           <button class="btn big" type="submit">Generate my plan</button>
         </form>
       </div>

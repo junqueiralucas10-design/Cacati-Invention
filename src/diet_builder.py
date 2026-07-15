@@ -176,7 +176,7 @@ def _phrase(items: list[str]) -> str:
 
 
 def _build_meal(name: str, cal_share: float, targets: dict, foods: list[Food], rot: int) -> dict:
-    meal_key = name.lower()
+    meal_key = "snack" if "snack" in name.lower() else name.lower()
     meal_cal = targets["calories"] * cal_share
     meal_protein = targets["protein_g"] * cal_share
     meal_fat = targets["fat_g"] * cal_share
@@ -276,10 +276,30 @@ def _build_meal(name: str, cal_share: float, targets: dict, foods: list[Food], r
     }
 
 
-def _meal_plan_shares(calories: int) -> list[tuple[str, float]]:
-    if calories >= 2200:
-        return [("Breakfast", 0.28), ("Lunch", 0.32), ("Dinner", 0.30), ("Snack", 0.10)]
-    return [("Breakfast", 0.33), ("Lunch", 0.34), ("Dinner", 0.33)]
+def _meal_slots(n: int) -> list[tuple[str, float]]:
+    """Ordered (name, calorie-share) slots for n meals (3-6).
+
+    Main meals (breakfast/lunch/dinner) carry more calories than snacks; snacks
+    are placed at natural times of day and all use the 'snack' food filter.
+    """
+    n = max(3, min(6, n))
+    if n == 3:
+        names = ["Breakfast", "Lunch", "Dinner"]
+    elif n == 4:
+        names = ["Breakfast", "Lunch", "Afternoon Snack", "Dinner"]
+    elif n == 5:
+        names = ["Breakfast", "Morning Snack", "Lunch", "Afternoon Snack", "Dinner"]
+    else:
+        names = ["Breakfast", "Morning Snack", "Lunch", "Afternoon Snack", "Dinner", "Evening Snack"]
+    weights = [1.0 if "snack" in nm.lower() else 3.0 for nm in names]
+    total = sum(weights)
+    return [(nm, w / total) for nm, w in zip(names, weights)]
+
+
+def _resolve_meal_count(profile: UserProfile, calories: int) -> int:
+    if profile.meals_per_day:
+        return max(3, min(6, profile.meals_per_day))
+    return 4 if calories >= 2200 else 3  # sensible default when unspecified
 
 
 _GOAL_WORD = {
@@ -297,9 +317,10 @@ _NOTES = (
 
 def _build_day_meals(profile: UserProfile, foods: list[Food], rot: int) -> list[dict]:
     targets = {"calories": profile.target_calories(), **profile.target_macros()}
+    n = _resolve_meal_count(profile, targets["calories"])
     return [
         _build_meal(name, share, targets, foods, rot + i)
-        for i, (name, share) in enumerate(_meal_plan_shares(targets["calories"]))
+        for i, (name, share) in enumerate(_meal_slots(n))
     ]
 
 
