@@ -29,6 +29,7 @@ from .intake import (
     parse_positive_float,
 )
 from .nutrition import verify_plan, verify_weekly_plan
+from .pricing import estimate_plan_cost, format_brl
 from .profile import UserProfile
 from .shopping import build_shopping_list
 
@@ -200,6 +201,8 @@ def create_app(generate: Generator | None = None) -> Flask:
             day_blocks = raw_plan.get("days", [])
             flags = verify_weekly_plan(raw_plan)
 
+        cost = estimate_plan_cost(raw_plan)
+        span = days or 1  # number of days the shopping list covers
         macros = profile.target_macros()
         result = {
             "summary": raw_plan.get("summary", ""),
@@ -208,6 +211,9 @@ def create_app(generate: Generator | None = None) -> Flask:
             "flags": [str(f) for f in flags],
             "shopping": [str(i) for i in build_shopping_list(raw_plan)],
             "targets": {"calories": profile.target_calories(), **macros},
+            "cost_total": format_brl(cost["total_brl"]),
+            "cost_per_day": format_brl(round(cost["total_brl"] / span, 2)),
+            "cost_span_days": span,
         }
         return render_template_string(
             _PAGE, **_context(result=result, form=form, screenshots=shots)
@@ -342,6 +348,9 @@ _PAGE = """
     .shop { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); }
     .shop ul, .flagbox ul { margin: 8px 0 0; padding-left: 20px; }
     .shop li, .flagbox li { margin: 3px 0; }
+    .cost { background: #fff6ef; border: 1px solid #f6dcbf; border-radius: var(--radius); padding: 18px 20px; margin: 16px 0; text-align: center; }
+    .cost-amount { font-family: "Fraunces", Georgia, serif; font-size: 2rem; font-weight: 600; color: var(--brand-dark); }
+    .cost-sub { color: var(--muted); font-size: 0.9rem; margin-top: 4px; }
 
     /* Testimonial */
     .quote { text-align: center; max-width: 720px; margin: 0 auto; }
@@ -567,6 +576,14 @@ _PAGE = """
               <ul>{% for item in result.shopping %}<li>{{ item }}</li>{% endfor %}</ul>
             </div>
           {% endif %}
+
+          <div class="cost">
+            <div class="cost-amount">{{ result.cost_total }}</div>
+            <div class="cost-sub">
+              {% if result.cost_span_days > 1 %}for {{ result.cost_span_days }} days · ~{{ result.cost_per_day }}/day · {% endif %}
+              estimated grocery cost — reference Carrefour Brasil prices, varies by region
+            </div>
+          </div>
         </div>
       {% endif %}
     </div>

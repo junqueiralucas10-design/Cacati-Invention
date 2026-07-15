@@ -15,6 +15,7 @@ import sys
 from .diet_planner import generate_plan, generate_weekly_plan
 from .intake import collect_profile
 from .nutrition import verify_plan, verify_weekly_plan
+from .pricing import estimate_plan_cost, format_brl
 from .profile import UserProfile
 from .shopping import build_shopping_list
 
@@ -70,6 +71,18 @@ def _print_shopping(plan: dict) -> None:
         print(f"   - {item}")
 
 
+def _print_cost(plan: dict, days: int | None) -> None:
+    cost = estimate_plan_cost(plan)
+    span = days or 1
+    total = format_brl(cost["total_brl"])
+    if span > 1:
+        per_day = format_brl(round(cost["total_brl"] / span, 2))
+        print(f"\n💰 Estimated cost: {total} for {span} days (~{per_day}/day)")
+    else:
+        print(f"\n💰 Estimated cost: {total} for the day")
+    print("   (reference Carrefour Brasil prices — varies by region)")
+
+
 def main(argv: list[str] | None = None) -> None:
     argv = sys.argv[1:] if argv is None else argv
     profile = _demo_profile() if "--demo" in argv else collect_profile()
@@ -89,6 +102,7 @@ def main(argv: list[str] | None = None) -> None:
         print(plan["notes"])
         _print_flags(verify_plan(plan))
         _print_shopping(plan)
+        _print_cost(plan, days)
     else:
         plan = generate_weekly_plan(profile, days=days)
         print(plan["summary"], "\n")
@@ -99,6 +113,7 @@ def main(argv: list[str] | None = None) -> None:
         print(plan["notes"])
         _print_flags(verify_weekly_plan(plan))
         _print_shopping(plan)
+        _print_cost(plan, days)
 
 
 if __name__ == "__main__":
