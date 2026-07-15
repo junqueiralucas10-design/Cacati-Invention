@@ -48,6 +48,11 @@ Every plan (daily or weekly) also produces a consolidated **shopping list** —
 ingredients are aggregated across all meals, combining matching item+unit pairs
 and summing quantities (`src/shopping.py`).
 
+It also shows an **estimated grocery cost in R$** (`src/pricing.py`), computed
+from the shopping-list quantities and reference Carrefour Brasil prices in
+`src/data/prices_brl.json`. Those prices are editable estimates (not a live
+feed) — update them to match your local store.
+
 ## Setup
 
 ```bash
