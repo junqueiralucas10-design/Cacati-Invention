@@ -112,13 +112,22 @@ def _profile_block(profile: UserProfile) -> str:
     )
 
 
+def _meals_phrase(profile: UserProfile) -> str:
+    """How many meals to request — honor the person's preference when given."""
+    if profile.meals_per_day:
+        n = max(3, min(6, profile.meals_per_day))
+        return f"exactly {n} meals (including any snacks)"
+    return "3-5 meals"
+
+
 def _build_prompt(profile: UserProfile) -> str:
     return (
         "Create a one-day meal plan for this person.\n\n"
         f"{_profile_block(profile)}\n"
-        "Provide 3-5 meals whose totals land close to these targets. For each meal "
-        "list its ingredients with a quantity and unit (e.g. grams, ml, cups, pieces) "
-        "so a shopping list can be built. Respect all restrictions and allergies strictly."
+        f"Provide {_meals_phrase(profile)} whose totals land close to these targets. "
+        "For each meal list its ingredients with a quantity and unit (e.g. grams, ml, "
+        "cups, pieces) so a shopping list can be built. Respect all restrictions and "
+        "allergies strictly."
     )
 
 
@@ -126,10 +135,10 @@ def _build_weekly_prompt(profile: UserProfile, days: int) -> str:
     return (
         f"Create a {days}-day meal plan for this person.\n\n"
         f"{_profile_block(profile)}\n"
-        f"Provide {days} days, each with 3-5 meals whose daily totals land close to "
-        "the targets above. Vary the meals across days so the week isn't repetitive. "
-        "For each meal list its ingredients with a quantity and unit (e.g. grams, ml, "
-        "cups, pieces) so a shopping list can be built. "
+        f"Provide {days} days, each with {_meals_phrase(profile)} whose daily totals land "
+        "close to the targets above. Vary the meals across days so the week isn't "
+        "repetitive. For each meal list its ingredients with a quantity and unit (e.g. "
+        "grams, ml, cups, pieces) so a shopping list can be built. "
         "Respect all restrictions and allergies strictly."
     )
 

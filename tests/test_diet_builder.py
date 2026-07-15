@@ -135,6 +135,31 @@ def test_dinner_avoids_breakfast_only_foods():
         assert bad not in dinner_items
 
 
+@pytest.mark.parametrize("n", [3, 4, 5, 6])
+def test_meals_per_day_controls_meal_count(n):
+    plan = build_personalized_plan(_profile(meals_per_day=n))
+    assert len(plan["meals"]) == n
+
+
+def test_meals_per_day_uses_natural_snack_names():
+    names = [m["name"] for m in build_personalized_plan(_profile(meals_per_day=6))["meals"]]
+    assert names == [
+        "Breakfast", "Morning Snack", "Lunch", "Afternoon Snack", "Dinner", "Evening Snack"
+    ]
+
+
+def test_meals_per_day_out_of_range_is_clamped():
+    assert len(build_personalized_plan(_profile(meals_per_day=99))["meals"]) == 6
+    assert len(build_personalized_plan(_profile(meals_per_day=1))["meals"]) == 3
+
+
+def test_more_meals_still_hits_calorie_target():
+    profile = _profile(meals_per_day=6)
+    plan = build_personalized_plan(profile)
+    total = sum(m["calories"] for m in plan["meals"])
+    assert abs(total - profile.target_calories()) / profile.target_calories() < 0.15
+
+
 def test_portions_use_natural_units():
     # e.g. eggs are counted ("" unit), not given in grams.
     plan = build_personalized_plan(_profile())
