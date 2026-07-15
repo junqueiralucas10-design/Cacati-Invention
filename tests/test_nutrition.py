@@ -14,12 +14,12 @@ def test_calories_from_macros_atwater():
 
 def test_local_db_exact_and_alias_lookup():
     db = LocalNutritionDatabase()
-    exact = db.lookup("chicken breast, cooked")
+    exact = db.lookup("frango grelhado")
     assert exact is not None and exact.protein_g == 31
 
-    # alias resolves to the same food
+    # English alias resolves to the Brazilian food
     alias = db.lookup("chicken")
-    assert alias is not None and alias.name == "chicken breast, cooked"
+    assert alias is not None and alias.name == "frango grelhado"
 
 
 def test_local_db_substring_and_case_insensitive():
