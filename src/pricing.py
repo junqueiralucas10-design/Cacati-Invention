@@ -23,6 +23,21 @@ def _load_prices(price_file: Path | None = None) -> dict[str, float]:
     return {k: float(v) for k, v in raw["per_kg"].items()}
 
 
+def load_prices(price_file: Path | None = None) -> dict[str, float]:
+    """Public alias: food name -> R$/kg."""
+    return _load_prices(price_file)
+
+
+def save_prices(prices: dict[str, float], price_file: Path | None = None) -> None:
+    """Persist updated per-kg prices, preserving the file's metadata fields."""
+    path = price_file or _PRICE_FILE
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    raw["per_kg"] = {k: round(float(v), 2) for k, v in prices.items()}
+    path.write_text(
+        json.dumps(raw, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+
+
 def _food_index(foods: list[Food]) -> dict[str, Food]:
     """Map short name and full name (lowercased) to a Food."""
     idx: dict[str, Food] = {}
@@ -75,3 +90,43 @@ def estimate_plan_cost(
 def format_brl(value: float) -> str:
     """Format a number as Brazilian currency, e.g. 32.5 -> 'R$ 32,50'."""
     return "R$ " + f"{value:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def prices_to_csv(prices: dict[str, float]) -> str:
+    """Render prices as 'food,price_brl_per_kg' CSV text (comma decimal ok on import)."""
+    lines = ["food,price_brl_per_kg"]
+    for name in sorted(prices):
+        lines.append(f"{name},{prices[name]:.2f}")
+    return "\n".join(lines) + "\n"
+
+
+def prices_from_csv(text: str, known: dict[str, float]) -> tuple[dict[str, float], list[str]]:
+    """Parse a CSV back into prices, keyed to known food names.
+
+    Accepts '12.50' or '12,50'. Unknown food names and bad values are collected
+    into a skipped list instead of failing the whole import. Foods absent from
+    the CSV keep their current price.
+    """
+    updated = dict(known)
+    skipped: list[str] = []
+    for line_no, raw_line in enumerate(text.splitlines()):
+        line = raw_line.strip().lstrip("﻿")
+        if not line or line_no == 0 and line.lower().startswith("food"):
+            continue
+        # Split on the FIRST comma: our food names contain no commas, while the
+        # value may use a comma decimal ("12,50").
+        name, sep, value = line.partition(",")
+        name = name.strip().strip('"')
+        if not sep or name not in updated:
+            skipped.append(raw_line.strip())
+            continue
+        try:
+            price = float(value.strip().strip('"').replace(",", "."))
+        except ValueError:
+            skipped.append(raw_line.strip())
+            continue
+        if price <= 0:
+            skipped.append(raw_line.strip())
+            continue
+        updated[name] = round(price, 2)
+    return updated, skipped

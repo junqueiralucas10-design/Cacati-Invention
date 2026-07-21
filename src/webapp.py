@@ -17,7 +17,7 @@ import os
 import re
 from typing import Callable
 
-from flask import Flask, render_template_string, request
+from flask import Flask, Response, redirect, render_template_string, request
 
 from .diet_builder import build_personalized_plan, build_personalized_weekly_plan
 from .diet_planner import generate_plan, generate_weekly_plan
@@ -29,7 +29,14 @@ from .intake import (
     parse_positive_float,
 )
 from .nutrition import verify_plan, verify_weekly_plan
-from .pricing import estimate_plan_cost, format_brl
+from .pricing import (
+    estimate_plan_cost,
+    format_brl,
+    load_prices,
+    prices_from_csv,
+    prices_to_csv,
+    save_prices,
+)
 from .profile import UserProfile
 from .shopping import build_shopping_list
 
@@ -166,7 +173,9 @@ def _context(**overrides) -> dict:
     return ctx
 
 
-def create_app(generate: Generator | None = None) -> Flask:
+def create_app(generate: Generator | None = None, price_file=None) -> Flask:
+    """price_file overrides the prices JSON path (used by tests to avoid
+    writing the repo's real data file)."""
     app = Flask(__name__)
     gen = generate or _default_generate
 
@@ -201,7 +210,7 @@ def create_app(generate: Generator | None = None) -> Flask:
             day_blocks = raw_plan.get("days", [])
             flags = verify_weekly_plan(raw_plan)
 
-        cost = estimate_plan_cost(raw_plan)
+        cost = estimate_plan_cost(raw_plan, prices=load_prices(price_file))
         span = days or 1  # number of days the shopping list covers
         macros = profile.target_macros()
         result = {
@@ -217,6 +226,57 @@ def create_app(generate: Generator | None = None) -> Flask:
         }
         return render_template_string(
             _PAGE, **_context(result=result, form=form, screenshots=shots)
+        )
+
+    @app.get("/prices")
+    def prices_page():
+        return render_template_string(
+            _PRICES_PAGE,
+            prices=sorted(load_prices(price_file).items()),
+            saved=False,
+            skipped=[],
+        )
+
+    @app.post("/prices")
+    def prices_save():
+        current = load_prices(price_file)
+        skipped: list[str] = []
+        for name in current:
+            raw = (request.form.get(name) or "").strip()
+            if not raw:
+                continue
+            try:
+                value = float(raw.replace(",", "."))
+            except ValueError:
+                skipped.append(f"{name}: '{raw}'")
+                continue
+            if value > 0:
+                current[name] = round(value, 2)
+            else:
+                skipped.append(f"{name}: '{raw}'")
+        save_prices(current, price_file)
+        return render_template_string(
+            _PRICES_PAGE, prices=sorted(current.items()), saved=True, skipped=skipped
+        )
+
+    @app.get("/prices.csv")
+    def prices_csv():
+        return Response(
+            prices_to_csv(load_prices(price_file)),
+            mimetype="text/csv",
+            headers={"Content-Disposition": "attachment; filename=prices_brl.csv"},
+        )
+
+    @app.post("/prices/import")
+    def prices_import():
+        file = request.files.get("csv_file")
+        if file is None or not file.filename:
+            return redirect("/prices")
+        text = file.read().decode("utf-8", errors="replace")
+        updated, skipped = prices_from_csv(text, load_prices(price_file))
+        save_prices(updated, price_file)
+        return render_template_string(
+            _PRICES_PAGE, prices=sorted(updated.items()), saved=True, skipped=skipped
         )
 
     return app
@@ -582,6 +642,7 @@ _PAGE = """
             <div class="cost-sub">
               {% if result.cost_span_days > 1 %}for {{ result.cost_span_days }} days · ~{{ result.cost_per_day }}/day · {% endif %}
               estimated grocery cost — reference Carrefour Brasil prices, varies by region
+              · <a href="/prices">edit prices</a>
             </div>
           </div>
         </div>
@@ -618,6 +679,88 @@ _PAGE = """
     }
     document.querySelectorAll('select[data-hint]').forEach(wireHint);
   </script>
+</body>
+</html>
+"""
+
+
+_PRICES_PAGE = """
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NutriForge — Price settings</title>
+  <style>
+    :root { --bg:#f4f6fb; --surface:#fff; --ink:#0b1437; --muted:#5a6480; --line:#e6e9f2;
+            --brand:#ff6a1a; --brand-dark:#e2540e; }
+    * { box-sizing: border-box; }
+    body { margin:0; background:var(--bg); color:var(--ink);
+           font-family:"Manrope",system-ui,sans-serif; line-height:1.5; }
+    .wrap { max-width:820px; margin:0 auto; padding:32px 20px 60px; }
+    h1 { font-family:Georgia,serif; margin:0 0 6px; }
+    .sub { color:var(--muted); margin:0 0 22px; }
+    a.back { color:var(--brand-dark); font-weight:700; text-decoration:none; }
+    .bar { display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin:18px 0; }
+    .btn { display:inline-block; border:0; cursor:pointer; text-decoration:none;
+           padding:10px 18px; border-radius:999px; font:inherit; font-weight:700;
+           background:var(--brand); color:#fff; }
+    .btn.ghost { background:transparent; color:var(--ink); border:1px solid var(--line); }
+    .ok { background:#e6f6ec; color:#166534; border:1px solid #bfe6cd;
+          padding:10px 14px; border-radius:10px; font-weight:600; margin:12px 0; }
+    .warn { background:#fff6ec; color:#8a5a1c; border:1px solid #f6dcbf;
+            padding:10px 14px; border-radius:10px; margin:12px 0; font-size:0.92rem; }
+    table { width:100%; border-collapse:collapse; background:var(--surface);
+            border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+    th, td { text-align:left; padding:10px 14px; border-bottom:1px solid var(--line); }
+    th { background:#eef1f9; font-size:0.85rem; text-transform:uppercase;
+         letter-spacing:0.04em; color:var(--muted); }
+    tr:last-child td { border-bottom:0; }
+    input[type=text] { width:110px; padding:7px 10px; font:inherit;
+                       border:1px solid #d7ded4; border-radius:8px; text-align:right; }
+    .note { color:var(--muted); font-size:0.88rem; margin-top:16px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <a class="back" href="/">&larr; Back to the planner</a>
+    <h1>Price settings</h1>
+    <p class="sub">Reference grocery prices in <strong>R$ per kg</strong>, used for the plan cost estimate.
+       Edit inline, or export/import a CSV to update them in a spreadsheet.</p>
+
+    {% if saved %}<div class="ok">✓ Prices saved.</div>{% endif %}
+    {% if skipped %}
+      <div class="warn"><strong>Skipped (not saved):</strong>
+        {% for s in skipped %}<div>{{ s }}</div>{% endfor %}
+      </div>
+    {% endif %}
+
+    <div class="bar">
+      <a class="btn ghost" href="/prices.csv">⬇ Export CSV</a>
+      <form method="post" action="/prices/import" enctype="multipart/form-data" style="display:flex;gap:8px;align-items:center">
+        <input type="file" name="csv_file" accept=".csv,text/csv" required>
+        <button class="btn ghost" type="submit">⬆ Import CSV</button>
+      </form>
+    </div>
+
+    <form method="post" action="/prices">
+      <table>
+        <tr><th>Food</th><th style="text-align:right">R$ / kg</th></tr>
+        {% for name, price in prices %}
+          <tr>
+            <td>{{ name }}</td>
+            <td style="text-align:right">
+              <input type="text" inputmode="decimal" name="{{ name }}" value="{{ '%.2f' % price }}">
+            </td>
+          </tr>
+        {% endfor %}
+      </table>
+      <div class="bar"><button class="btn" type="submit">Save prices</button></div>
+    </form>
+
+    <p class="note">Values are reference estimates (originally based on Carrefour Brasil) — update them to
+       match your local store. Blank fields keep the current price; invalid or non-positive values are skipped.</p>
+  </div>
 </body>
 </html>
 """
