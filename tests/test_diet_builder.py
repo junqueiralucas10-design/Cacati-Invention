@@ -117,7 +117,7 @@ def test_impossible_restrictions_raise():
 def test_weekly_plan_shape_and_variety():
     weekly = build_personalized_weekly_plan(_profile(), days=3)
     assert len(weekly["days"]) == 3
-    assert [d["day"] for d in weekly["days"]] == ["Monday", "Tuesday", "Wednesday"]
+    assert [d["day"] for d in weekly["days"]] == ["Segunda-feira", "Terça-feira", "Quarta-feira"]
     assert verify_weekly_plan(weekly) == []
     # Rotation should make at least two days differ in their first meal's makeup.
     firsts = [d["meals"][0]["description"] for d in weekly["days"]]
@@ -135,14 +135,14 @@ def _meal(plan, name):
 
 def test_breakfast_avoids_dinner_only_foods():
     plan = build_personalized_plan(_profile())
-    breakfast_items = " ".join(i["item"].lower() for i in _meal(plan, "Breakfast")["ingredients"])
+    items = " ".join(i["item"].lower() for i in _meal(plan, "Café da manhã")["ingredients"])
     for bad in ("tilápia", "brócolis", "frango", "carne", "arroz", "feijão"):
-        assert bad not in breakfast_items
+        assert bad not in items
 
 
 def test_dinner_avoids_breakfast_only_foods():
     plan = build_personalized_plan(_profile())
-    dinner_items = " ".join(i["item"].lower() for i in _meal(plan, "Dinner")["ingredients"])
+    dinner_items = " ".join(i["item"].lower() for i in _meal(plan, "Jantar")["ingredients"])
     for bad in ("aveia", "banana", "pão francês", "tapioca"):
         assert bad not in dinner_items
 
@@ -156,8 +156,22 @@ def test_meals_per_day_controls_meal_count(n):
 def test_meals_per_day_uses_natural_snack_names():
     names = [m["name"] for m in build_personalized_plan(_profile(meals_per_day=6))["meals"]]
     assert names == [
-        "Breakfast", "Morning Snack", "Lunch", "Afternoon Snack", "Dinner", "Evening Snack"
+        "Café da manhã", "Lanche da manhã", "Almoço",
+        "Lanche da tarde", "Jantar", "Lanche da noite",
     ]
+
+
+def test_snack_slots_still_use_the_snack_food_filter():
+    # The meal label is Portuguese but the food-database tag is still "snack".
+    # If the two ever get coupled again, a snack would draw from the main-meal
+    # pool and pick up rice or chicken.
+    plan = build_personalized_plan(_profile(meals_per_day=6))
+    snacks = [m for m in plan["meals"] if m["name"].startswith("Lanche")]
+    assert len(snacks) == 3
+    for snack in snacks:
+        items = " ".join(i["item"].lower() for i in snack["ingredients"])
+        for bad in ("frango", "arroz", "feijão", "tilápia", "carne"):
+            assert bad not in items, f"{snack['name']} contém {bad}"
 
 
 def test_meals_per_day_out_of_range_is_clamped():

@@ -11,9 +11,8 @@ import json
 
 import anthropic
 
+from . import MODEL
 from .profile import UserProfile
-
-MODEL = "claude-opus-4-8"
 
 # A single ingredient line, used to build a consolidated shopping list.
 _INGREDIENT_SCHEMA = {
@@ -91,7 +90,14 @@ _SYSTEM = (
     "feijão, frango, ovos, carne, tapioca, pão, frutas (banana, mamão, laranja), "
     "mandioca, batata-doce — and keep each food in a meal where Brazilians would "
     "normally eat it. You are not a doctor: never give medical advice, and add a "
-    "note reminding the user to consult a professional for medical conditions."
+    "note reminding the user to consult a professional for medical conditions.\n\n"
+    "Write every field of your response in Brazilian Portuguese — the users are "
+    "in Brazil. Name meals the way Brazilians do: 'Café da manhã', 'Lanche da "
+    "manhã', 'Almoço', 'Lanche da tarde', 'Jantar', 'Lanche da noite'. Name each "
+    "ingredient the way it appears on a Brazilian grocery receipt ('peito de "
+    "frango grelhado', 'arroz branco cozido', 'feijão carioca cozido') — the app "
+    "matches those names against a price table to estimate the grocery cost, so "
+    "an English name means the item can't be priced."
 )
 
 

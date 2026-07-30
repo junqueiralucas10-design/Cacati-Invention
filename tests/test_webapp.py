@@ -19,8 +19,9 @@ def test_collect_screenshots_lists_images_with_captions(tmp_path):
 
     shots = _collect_screenshots(str(tmp_path))
     # Sorted by filename (01 before 02); the numeric ordering prefix is stripped
-    # from the caption, which is then title-cased.
-    assert [s["alt"] for s in shots] == ["The Form", "Weekly Plan"]
+    # from the caption, and only the first word is capitalized (title-casing
+    # every word reads wrong in Portuguese: "Seu Plano Do Dia").
+    assert [s["alt"] for s in shots] == ["The form", "Weekly plan"]
     assert shots[0]["src"] == "/static/screenshots/01-the-form.jpg"
 
 
@@ -113,11 +114,11 @@ def test_index_renders_form():
     resp = client.get("/")
     assert resp.status_code == 200
     body = resp.get_data(as_text=True)
-    assert "Generate my plan" in body
+    assert "Gerar meu plano" in body
     assert 'name="age"' in body
     # Friendly goal labels + descriptions are rendered (not raw enum values only).
-    assert "Lose weight" in body
-    assert "support lean muscle growth" in body
+    assert "Perder peso" in body
+    assert "sustentar ganho de massa magra" in body
 
 
 def test_post_daily_plan_renders_results_and_shopping():
@@ -126,9 +127,9 @@ def test_post_daily_plan_renders_results_and_shopping():
     assert resp.status_code == 200
     body = resp.get_data(as_text=True)
     assert "Chicken &amp; rice" in body  # HTML-escaped
-    assert "Shopping list" in body
+    assert "Lista de compras" in body
     assert "200 g Chicken breast" in body
-    assert "Nutrition check passed" in body  # 495 vs 490 computed -> within tolerance
+    assert "Conferência nutricional ok" in body  # 495 vs 490 computed -> within tolerance
 
 
 def test_post_weekly_plan_shows_day_headings():
@@ -144,4 +145,4 @@ def test_post_invalid_form_shows_error_and_400():
     client = create_app(generate=lambda p, d: _FAKE_DAILY).test_client()
     resp = client.post("/plan", data=_valid_form(age="abc"))
     assert resp.status_code == 400
-    assert "whole number" in resp.get_data(as_text=True)
+    assert "não é um número inteiro" in resp.get_data(as_text=True)

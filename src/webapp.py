@@ -37,6 +37,7 @@ from .pricing import (
     prices_to_csv,
     save_prices,
 )
+from . import brand
 from .profile import UserProfile
 from .shopping import build_shopping_list
 
@@ -44,32 +45,32 @@ from .shopping import build_shopping_list
 # validation. Tuples are (value, label, description); value is the enum string
 # the model/profile expects, label + description are what the user sees.
 _SEX_CHOICES = [
-    ("male", "Male", ""),
-    ("female", "Female", ""),
+    ("male", "Masculino", ""),
+    ("female", "Feminino", ""),
 ]
 _ACTIVITY_CHOICES = [
-    ("sedentary", "Sedentary", "Little or no exercise."),
-    ("light", "Lightly active", "Light exercise 1–3 days per week."),
-    ("moderate", "Moderately active", "Moderate exercise 3–5 days per week."),
-    ("active", "Very active", "Hard exercise 6–7 days per week."),
-    ("very_active", "Extra active", "Very hard exercise or a physical job."),
+    ("sedentary", "Sedentário", "Pouco ou nenhum exercício."),
+    ("light", "Levemente ativo", "Exercício leve, 1 a 3 dias por semana."),
+    ("moderate", "Moderadamente ativo", "Exercício moderado, 3 a 5 dias por semana."),
+    ("active", "Muito ativo", "Exercício pesado, 6 a 7 dias por semana."),
+    ("very_active", "Extremamente ativo", "Exercício muito pesado ou trabalho físico."),
 ]
 _GOAL_CHOICES = [
-    ("lose_weight", "Lose weight", "A moderate calorie deficit for steady, healthy fat loss (~0.5 kg/week)."),
-    ("gain_muscle", "Gain muscle", "A calorie surplus with high protein to support lean muscle growth."),
-    ("maintain", "Maintain", "Eat at maintenance to hold your current weight and composition."),
+    ("lose_weight", "Perder peso", "Déficit calórico moderado para perda de gordura constante e saudável (~0,5 kg/semana)."),
+    ("gain_muscle", "Ganhar massa", "Superávit calórico com proteína alta para sustentar ganho de massa magra."),
+    ("maintain", "Manter", "Comer na manutenção para segurar o peso e a composição atuais."),
 ]
 _LENGTH_CHOICES = [
-    ("", "Single day", "One day to try it out."),
-    ("3", "3 days", "A short run to plan ahead."),
-    ("5", "5 days", "A work-week of meals."),
-    ("7", "Full week", "Seven days, varied so it isn't repetitive."),
+    ("", "Um dia", "Um dia para experimentar."),
+    ("3", "3 dias", "Um período curto para se antecipar."),
+    ("5", "5 dias", "Uma semana útil de refeições."),
+    ("7", "Semana inteira", "Sete dias, variados para não ficar repetitivo."),
 ]
 _MEALS_CHOICES = [
-    ("3", "3 meals", "Breakfast, lunch, dinner."),
-    ("4", "4 meals", "Three meals plus an afternoon snack."),
-    ("5", "5 meals", "Three meals plus a morning and afternoon snack."),
-    ("6", "6 meals", "Three meals plus three snacks through the day."),
+    ("3", "3 refeições", "Café da manhã, almoço e jantar."),
+    ("4", "4 refeições", "As três principais mais um lanche da tarde."),
+    ("5", "5 refeições", "As três principais mais lanches da manhã e da tarde."),
+    ("6", "6 refeições", "As três principais mais três lanches ao longo do dia."),
 ]
 
 # Validation option lists derive from the choices — single source of truth.
@@ -138,6 +139,9 @@ def _collect_screenshots(static_folder: str | None) -> list[dict]:
     doesn't render until the user drops images in. Filenames become alt text
     (dashes/underscores -> spaces); sort order follows the filename, so a
     numeric prefix like "01-form.png" controls placement.
+
+    Only the first word is capitalized — title-casing every word is wrong in
+    Portuguese ("Seu Plano Do Dia" instead of "Seu plano do dia").
     """
     if not static_folder:
         return []
@@ -151,7 +155,8 @@ def _collect_screenshots(static_folder: str | None) -> list[dict]:
         stem = os.path.splitext(fname)[0]
         # Drop a leading ordering prefix like "01-" or "02_" from the caption.
         label = re.sub(r"^\d+[-_ ]*", "", stem)
-        alt = (label or stem).replace("-", " ").replace("_", " ").strip().title()
+        words = (label or stem).replace("-", " ").replace("_", " ").strip()
+        alt = words[:1].upper() + words[1:]
         shots.append({"src": f"/static/screenshots/{fname}", "alt": alt})
     return shots
 
@@ -163,6 +168,7 @@ def _context(**overrides) -> dict:
         "result": None,
         "form": {},
         "screenshots": [],
+        "brand": brand,
         "sex_choices": _SEX_CHOICES,
         "activity_choices": _ACTIVITY_CHOICES,
         "goal_choices": _GOAL_CHOICES,
@@ -284,11 +290,12 @@ def create_app(generate: Generator | None = None, price_file=None) -> Flask:
 
 _PAGE = """
 <!doctype html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>NutriForge — AI meal plans for muscle & fat loss</title>
+  <title>{{ brand.NAME }} — dieta personalizada para ganhar massa ou perder peso</title>
+  <meta name="description" content="{{ brand.POSITIONING }} Plano alimentar que bate suas metas de calorias e macros, com lista de compras e custo estimado em R$.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <!-- Non-blocking: enhances typography when online, falls back to serif/sans instantly otherwise. -->
@@ -416,6 +423,17 @@ _PAGE = """
     .quote { text-align: center; max-width: 720px; margin: 0 auto; }
     .quote p { font-family: "Fraunces", serif; font-size: 1.5rem; font-weight: 500; line-height: 1.35; }
     .quote .who { color: var(--muted); font-family: "Manrope"; font-size: 0.95rem; font-weight: 600; }
+    .manifesto { max-width: 700px; margin: 0 auto 44px; }
+    .manifesto p { font-family: "Fraunces", serif; font-size: 1.22rem; line-height: 1.5; margin: 0 0 18px; }
+    .manifesto p:first-child { font-size: 1.45rem; font-weight: 600; }
+    .manifesto p:last-child { color: var(--brand-dark); font-weight: 600; margin-bottom: 0; }
+    .quotes { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+    .qcard { margin: 0; background: var(--surface); border: 1px solid var(--line);
+             border-left: 4px solid var(--brand); border-radius: 14px; padding: 22px 24px; }
+    .qcard blockquote { margin: 0 0 12px; font-family: "Fraunces", serif; font-size: 1.05rem;
+                        line-height: 1.45; }
+    .qcard figcaption { color: var(--muted); font-size: 0.9rem; font-weight: 600; }
+    .quotes-note { text-align: center; color: var(--muted); font-size: 0.85rem; margin: 22px 0 0; }
 
     /* Footer */
     footer { background: var(--hero-1); color: #aab3d9; padding: 40px 0; margin-top: 20px; }
@@ -430,7 +448,7 @@ _PAGE = """
 
     @media (max-width: 820px) {
       .hero .wrap { grid-template-columns: 1fr; }
-      .grid3, .steps { grid-template-columns: 1fr; }
+      .grid3, .steps, .quotes { grid-template-columns: 1fr; }
       .row { grid-template-columns: 1fr; }
       .nav-links { display: none; }
     }
@@ -441,11 +459,11 @@ _PAGE = """
     <div class="wrap nav-inner">
       <div class="brand"><span class="dot"></span> NutriForge</div>
       <div class="nav-links">
-        <a href="#features">Features</a>
-        <a href="#how">How it works</a>
-        {% if screenshots %}<a href="#screens">Screens</a>{% endif %}
-        <a href="#pricing">Pricing</a>
-        <a class="btn" href="#plan">Get your plan</a>
+        <a href="#manifesto">Manifesto</a>
+        <a href="#features">Recursos</a>
+        <a href="#how">Como funciona</a>
+        {% if screenshots %}<a href="#screens">Telas</a>{% endif %}
+        <a class="btn" href="#plan">Montar meu plano</a>
       </div>
     </div>
   </nav>
@@ -453,48 +471,72 @@ _PAGE = """
   <header class="hero">
     <div class="wrap">
       <div>
-        <span class="eyebrow">AI-powered nutrition</span>
-        <h1>Eat for your goal, without the guesswork.</h1>
-        <p class="lead">Personalized meal plans that hit your exact calorie and macro targets — for building muscle or losing weight, the healthy way.</p>
+        <span class="eyebrow">Nutrição com inteligência artificial</span>
+        <h1>{{ brand.POSITIONING }}</h1>
+        <p class="lead">{{ brand.LEAD }}</p>
         <div class="hero-cta">
-          <a class="btn lime big" href="#plan">Build my plan — free</a>
-          <a class="btn ghost big" href="#how" style="color:#e9ecff;border-color:rgba(255,255,255,0.3)">See how it works</a>
+          <a class="btn lime big" href="#plan">Montar meu plano — grátis</a>
+          <a class="btn ghost big" href="#manifesto" style="color:#e9ecff;border-color:rgba(255,255,255,0.3)">O que a gente acredita</a>
         </div>
         <div class="stats">
-          <div class="stat"><b>3&nbsp;sec</b><span>to a full plan</span></div>
-          <div class="stat"><b>100%</b><span>macro-matched</span></div>
-          <div class="stat"><b>0</b><span>spreadsheets</span></div>
+          <div class="stat"><b>3&nbsp;seg</b><span>para o plano pronto</span></div>
+          <div class="stat"><b>100%</b><span>ajustado aos macros</span></div>
+          <div class="stat"><b>0</b><span>planilhas</span></div>
         </div>
       </div>
       <div class="hero-card">
-        <h4>Sample daily target</h4>
-        <div class="hc-row">Calories <span>2,600 kcal</span></div>
-        <div class="hc-row">Protein <span>164 g</span></div>
-        <div class="hc-row">Carbs <span>300 g</span></div>
-        <div class="hc-row">Fat <span>72 g</span></div>
-        <div class="hc-row">Shopping list <span>✓ included</span></div>
+        <h4>Exemplo de meta diária</h4>
+        <div class="hc-row">Calorias <span>2.600 kcal</span></div>
+        <div class="hc-row">Proteína <span>164 g</span></div>
+        <div class="hc-row">Carboidrato <span>300 g</span></div>
+        <div class="hc-row">Gordura <span>72 g</span></div>
+        <div class="hc-row">Lista de compras <span>✓ incluída</span></div>
       </div>
     </div>
   </header>
 
+  <section class="pad" id="manifesto">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>De dentro pra fora</h2>
+        <p>{{ brand.TAGLINE }}</p>
+      </div>
+      <div class="manifesto">
+        {% for line in brand.MANIFESTO %}<p>{{ line }}</p>{% endfor %}
+      </div>
+      <div class="quotes">
+        {% for q in brand.QUOTES %}
+          <figure class="qcard">
+            <blockquote>{{ q.text }}</blockquote>
+            <figcaption>{{ q.attribution }}</figcaption>
+          </figure>
+        {% endfor %}
+      </div>
+      <p class="quotes-note">
+        Retratos de arquétipos do esporte, escritos para ilustrar a ideia — não são
+        citações de atletas reais.
+      </p>
+    </div>
+  </section>
+
   <section class="pad" id="features">
     <div class="wrap">
       <div class="section-head">
-        <h2>Everything you need to eat with intent</h2>
-        <p>Not just a menu — a plan grounded in real numbers, checked for accuracy, and ready to shop.</p>
+        <h2>A parte de fora, resolvida</h2>
+        <p>Não é um menu — é um plano com números reais, conferidos, e pronto para o mercado.</p>
       </div>
       <div class="grid3">
         <div class="card">
-          <img class="card-img" src="/static/images/meals-spread.jpg" alt="Assorted healthy meals on a table" loading="lazy">
-          <div class="card-body"><h3>🎯 Dialed-in targets</h3><p>We compute your calories and macros from your body stats, activity, and goal — then build meals to match.</p></div>
+          <img class="card-img" src="/static/images/meals-spread.jpg" alt="Refeições saudáveis variadas sobre a mesa" loading="lazy">
+          <div class="card-body"><h3>🎯 Metas no ponto</h3><p>Calculamos suas calorias e macros a partir do seu corpo, da sua rotina e do seu objetivo — e montamos as refeições em cima disso.</p></div>
         </div>
         <div class="card">
-          <img class="card-img" src="/static/images/poke-bowl.jpg" alt="Colorful poke bowl with vegetables" loading="lazy">
-          <div class="card-body"><h3>✅ Verified numbers</h3><p>Every meal's calories are cross-checked against its macros, so the plan's math actually adds up.</p></div>
+          <img class="card-img" src="/static/images/poke-bowl.jpg" alt="Poke bowl colorido com legumes" loading="lazy">
+          <div class="card-body"><h3>✅ Números conferidos</h3><p>As calorias de cada refeição são checadas contra os macros, então a conta do plano realmente fecha.</p></div>
         </div>
         <div class="card">
-          <img class="card-img" src="/static/images/meal-prep.jpg" alt="Meal-prep containers with grilled chicken" loading="lazy">
-          <div class="card-body"><h3>🛒 Auto shopping list</h3><p>Ingredients from every meal are combined into one tidy list — ready for your next grocery run.</p></div>
+          <img class="card-img" src="/static/images/meal-prep.jpg" alt="Potes de marmita com frango grelhado" loading="lazy">
+          <div class="card-body"><h3>🛒 Lista de compras automática</h3><p>Os ingredientes de todas as refeições viram uma lista só — pronta para a próxima ida ao mercado.</p></div>
         </div>
       </div>
     </div>
@@ -502,11 +544,11 @@ _PAGE = """
 
   <section class="pad" id="how" style="background:#eef1f9">
     <div class="wrap">
-      <div class="section-head"><h2>Three steps to your plan</h2><p>From your details to a full day (or week) of meals in seconds.</p></div>
+      <div class="section-head"><h2>Três passos até o seu plano</h2><p>Dos seus dados a um dia (ou uma semana) de refeições em segundos.</p></div>
       <div class="steps">
-        <div class="step"><div class="n">1</div><h3>Tell us about you</h3><p>Age, body stats, activity, and whether you're cutting, bulking, or maintaining.</p></div>
-        <div class="step"><div class="n">2</div><h3>We do the math</h3><p>Your targets are calculated and meals are generated to land right on them.</p></div>
-        <div class="step"><div class="n">3</div><h3>Eat & shop</h3><p>Get your meals, a nutrition check, and a combined shopping list.</p></div>
+        <div class="step"><div class="n">1</div><h3>Conte sobre você</h3><p>Idade, medidas, rotina de atividade e se o objetivo é secar, ganhar massa ou manter.</p></div>
+        <div class="step"><div class="n">2</div><h3>A gente faz a conta</h3><p>Suas metas são calculadas e as refeições montadas para cair exatamente nelas.</p></div>
+        <div class="step"><div class="n">3</div><h3>Você faz acontecer</h3><p>Receba as refeições, a conferência e a lista de compras. O resto é você.</p></div>
       </div>
     </div>
   </section>
@@ -515,8 +557,8 @@ _PAGE = """
   <section class="pad" id="screens">
     <div class="wrap">
       <div class="section-head">
-        <h2>See it in action</h2>
-        <p>Real plans, real numbers — straight from the app.</p>
+        <h2>Veja funcionando</h2>
+        <p>Planos reais, números reais — direto do app.</p>
       </div>
       <div class="shots">
         {% for s in screenshots %}
@@ -534,76 +576,76 @@ _PAGE = """
   <section class="pad planner" id="plan">
     <div class="wrap">
       <div class="section-head">
-        <h2>Build your plan</h2>
-        <p>Free, no sign-up. Fill in your details and pick a plan length.</p>
+        <h2>Monte seu plano</h2>
+        <p>Grátis, sem cadastro. Preencha seus dados e escolha a duração.</p>
       </div>
 
       <div class="form-card">
         {% if error %}<div class="error">⚠ {{ error }}</div>{% endif %}
         <form method="post" action="/plan">
           <div class="row">
-            <label>Age
+            <label>Idade
               <input name="age" type="number" min="13" max="120" value="{{ form.get('age', '') }}" required>
             </label>
-            <label>Sex
+            <label>Sexo
               <select name="sex">
                 {% for value, lbl, desc in sex_choices %}<option value="{{ value }}" {{ 'selected' if form.get('sex')==value else '' }}>{{ lbl }}</option>{% endfor %}
               </select>
             </label>
           </div>
           <div class="row">
-            <label>Height (cm)
-              <input name="height_cm" type="text" inputmode="decimal" value="{{ form.get('height_cm', '') }}" placeholder="e.g. 178" required>
+            <label>Altura (cm)
+              <input name="height_cm" type="text" inputmode="decimal" value="{{ form.get('height_cm', '') }}" placeholder="ex.: 178" required>
             </label>
-            <label>Weight (kg)
-              <input name="weight_kg" type="text" inputmode="decimal" value="{{ form.get('weight_kg', '') }}" placeholder="e.g. 82" required>
+            <label>Peso (kg)
+              <input name="weight_kg" type="text" inputmode="decimal" value="{{ form.get('weight_kg', '') }}" placeholder="ex.: 82" required>
             </label>
           </div>
-          <label>Activity level
+          <label>Nível de atividade
             <select name="activity_level" data-hint="activity-hint">
               {% for value, lbl, desc in activity_choices %}<option value="{{ value }}" data-desc="{{ desc }}" {{ 'selected' if form.get('activity_level')==value else '' }}>{{ lbl }} — {{ desc }}</option>{% endfor %}
             </select>
             <span class="hint" id="activity-hint"></span>
           </label>
-          <label>Goal
+          <label>Objetivo
             <select name="goal" data-hint="goal-hint">
               {% for value, lbl, desc in goal_choices %}<option value="{{ value }}" data-desc="{{ desc }}" {{ 'selected' if form.get('goal')==value else '' }}>{{ lbl }} — {{ desc }}</option>{% endfor %}
             </select>
             <span class="hint" id="goal-hint"></span>
           </label>
-          <label>Dietary restrictions <span style="font-weight:500;color:var(--muted)">(comma-separated, optional)</span>
-            <input name="dietary_restrictions" type="text" value="{{ form.get('dietary_restrictions', '') }}" placeholder="e.g. vegetarian, no nuts">
+          <label>Restrições alimentares <span style="font-weight:500;color:var(--muted)">(separadas por vírgula, opcional)</span>
+            <input name="dietary_restrictions" type="text" value="{{ form.get('dietary_restrictions', '') }}" placeholder="ex.: vegetariano, sem lactose">
           </label>
-          <label>Allergies <span style="font-weight:500;color:var(--muted)">(comma-separated, optional)</span>
-            <input name="allergies" type="text" value="{{ form.get('allergies', '') }}" placeholder="e.g. shellfish">
+          <label>Alergias <span style="font-weight:500;color:var(--muted)">(separadas por vírgula, opcional)</span>
+            <input name="allergies" type="text" value="{{ form.get('allergies', '') }}" placeholder="ex.: frutos do mar">
           </label>
           <div class="row">
-            <label>Meals per day
+            <label>Refeições por dia
               <select name="meals_per_day" data-hint="meals-hint">
                 {% for value, lbl, desc in meals_choices %}<option value="{{ value }}" data-desc="{{ desc }}" {{ 'selected' if (form.get('meals_per_day')==value or (not form.get('meals_per_day') and value=='4')) else '' }}>{{ lbl }}</option>{% endfor %}
               </select>
               <span class="hint" id="meals-hint"></span>
             </label>
-            <label>Plan length
+            <label>Duração do plano
               <select name="plan_length" data-hint="length-hint">
                 {% for value, lbl, desc in length_choices %}<option value="{{ value }}" data-desc="{{ desc }}" {{ 'selected' if form.get('plan_length')==value else '' }}>{{ lbl }} — {{ desc }}</option>{% endfor %}
               </select>
               <span class="hint" id="length-hint"></span>
             </label>
           </div>
-          <button class="btn big" type="submit">Generate my plan</button>
+          <button class="btn big" type="submit">Gerar meu plano</button>
         </form>
       </div>
 
       {% if result %}
         <div class="result-wrap">
-          <h2 style="text-align:center">Your plan</h2>
+          <h2 style="text-align:center">Seu plano</h2>
           <div style="text-align:center;margin-bottom:16px">
             <span class="targets-pill">
               <span>{{ result.targets.calories }} kcal</span>·
-              <span>{{ result.targets.protein_g }}g protein</span>·
-              <span>{{ result.targets.fat_g }}g fat</span>·
-              <span>{{ result.targets.carbs_g }}g carbs</span>
+              <span>{{ result.targets.protein_g }}g de proteína</span>·
+              <span>{{ result.targets.fat_g }}g de gordura</span>·
+              <span>{{ result.targets.carbs_g }}g de carboidrato</span>
             </span>
           </div>
           <p style="text-align:center;color:var(--muted)">{{ result.summary }}</p>
@@ -615,7 +657,7 @@ _PAGE = """
                 <div class="meal">
                   <strong>{{ meal.name }}</strong> — {{ meal.calories }} kcal<br>
                   <span>{{ meal.description }}</span><br>
-                  <span class="macros">P {{ meal.protein_g }}g / F {{ meal.fat_g }}g / C {{ meal.carbs_g }}g</span>
+                  <span class="macros">P {{ meal.protein_g }}g / G {{ meal.fat_g }}g / C {{ meal.carbs_g }}g</span>
                 </div>
               {% endfor %}
             </div>
@@ -624,15 +666,15 @@ _PAGE = """
           <p style="color:var(--muted)">{{ result.notes }}</p>
 
           {% if result.flags %}
-            <div class="flagbox"><strong>⚠ Nutrition check flagged some meals:</strong>
+            <div class="flagbox"><strong>⚠ A conferência nutricional sinalizou refeições:</strong>
               <ul>{% for f in result.flags %}<li>{{ f }}</li>{% endfor %}</ul>
             </div>
           {% else %}
-            <p class="pass">✓ Nutrition check passed — stated calories match the macros.</p>
+            <p class="pass">✓ Conferência nutricional ok — as calorias batem com os macros.</p>
           {% endif %}
 
           {% if result.shopping %}
-            <div class="shop"><strong>🛒 Shopping list</strong>
+            <div class="shop"><strong>🛒 Lista de compras</strong>
               <ul>{% for item in result.shopping %}<li>{{ item }}</li>{% endfor %}</ul>
             </div>
           {% endif %}
@@ -640,9 +682,9 @@ _PAGE = """
           <div class="cost">
             <div class="cost-amount">{{ result.cost_total }}</div>
             <div class="cost-sub">
-              {% if result.cost_span_days > 1 %}for {{ result.cost_span_days }} days · ~{{ result.cost_per_day }}/day · {% endif %}
-              estimated grocery cost — reference Carrefour Brasil prices, varies by region
-              · <a href="/prices">edit prices</a>
+              {% if result.cost_span_days > 1 %}para {{ result.cost_span_days }} dias · ~{{ result.cost_per_day }}/dia · {% endif %}
+              custo estimado do mercado — preços de referência do Carrefour Brasil, varia por região
+              · <a href="/prices">editar preços</a>
             </div>
           </div>
         </div>
@@ -650,17 +692,17 @@ _PAGE = """
     </div>
   </section>
 
-  <section class="pad" id="pricing">
+  <section class="pad" id="closing">
     <div class="wrap quote">
-      <p>“I stopped guessing my macros. NutriForge gave me a full week of meals and a shopping list in seconds — and I finally hit my protein every day.”</p>
-      <div class="who">— Sample testimonial · early user</div>
+      <p>{{ brand.POSITIONING }}</p>
+      <div class="who">{{ brand.NAME }} — a gente resolve a parte de fora</div>
     </div>
   </section>
 
   <footer>
     <div class="wrap">
       <div class="brand" style="color:#fff"><span class="dot"></span> NutriForge</div>
-      <div class="disclaimer">Not medical advice. Plans are informational estimates — consult a professional for medical conditions.<br>Food photography via Pexels (free license).</div>
+      <div class="disclaimer">Não é conselho médico. Os planos são estimativas informativas — consulte um profissional em caso de condição de saúde.<br>Fotos de alimentos via Pexels (licença livre).</div>
     </div>
   </footer>
 
@@ -686,11 +728,11 @@ _PAGE = """
 
 _PRICES_PAGE = """
 <!doctype html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>NutriForge — Price settings</title>
+  <title>NutriForge — Ajuste de preços</title>
   <style>
     :root { --bg:#f4f6fb; --surface:#fff; --ink:#0b1437; --muted:#5a6480; --line:#e6e9f2;
             --brand:#ff6a1a; --brand-dark:#e2540e; }

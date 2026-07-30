@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import sys
 
+from .console import use_utf8_output
 from .diet_planner import generate_plan, generate_weekly_plan
 from .intake import collect_profile
 from .nutrition import verify_plan, verify_weekly_plan
@@ -50,23 +51,23 @@ def _parse_week_arg(argv: list[str]) -> int | None:
 def _print_meal(meal: dict) -> None:
     print(f"• {meal['name']} — {meal['calories']} kcal")
     print(f"    {meal['description']}")
-    print(f"    P {meal['protein_g']}g / F {meal['fat_g']}g / C {meal['carbs_g']}g\n")
+    print(f"    P {meal['protein_g']}g / G {meal['fat_g']}g / C {meal['carbs_g']}g\n")
 
 
 def _print_flags(discrepancies: list) -> None:
     if discrepancies:
-        print("\n⚠ Nutrition check flagged some meals (stated vs computed calories):")
+        print("\n⚠ A conferência nutricional sinalizou refeições (calorias declaradas vs calculadas):")
         for d in discrepancies:
             print(f"   - {d}")
     else:
-        print("\n✓ Nutrition check passed — stated calories match the macros.")
+        print("\n✓ Conferência nutricional ok — as calorias batem com os macros.")
 
 
 def _print_shopping(plan: dict) -> None:
     items = build_shopping_list(plan)
     if not items:
         return
-    print("\n🛒 Shopping list:")
+    print("\n🛒 Lista de compras:")
     for item in items:
         print(f"   - {item}")
 
@@ -77,21 +78,23 @@ def _print_cost(plan: dict, days: int | None) -> None:
     total = format_brl(cost["total_brl"])
     if span > 1:
         per_day = format_brl(round(cost["total_brl"] / span, 2))
-        print(f"\n💰 Estimated cost: {total} for {span} days (~{per_day}/day)")
+        print(f"\n💰 Custo estimado: {total} para {span} dias (~{per_day}/dia)")
     else:
-        print(f"\n💰 Estimated cost: {total} for the day")
-    print("   (reference Carrefour Brasil prices — varies by region)")
+        print(f"\n💰 Custo estimado: {total} para o dia")
+    print("   (preços de referência do Carrefour Brasil — varia por região)")
 
 
 def main(argv: list[str] | None = None) -> None:
     argv = sys.argv[1:] if argv is None else argv
+    use_utf8_output()
     profile = _demo_profile() if "--demo" in argv else collect_profile()
     days = _parse_week_arg(argv)
 
     macros = profile.target_macros()
     print(
-        f"\nTargets — {profile.target_calories()} kcal | "
-        f"{macros['protein_g']}g protein / {macros['fat_g']}g fat / {macros['carbs_g']}g carbs\n"
+        f"\nMetas — {profile.target_calories()} kcal | "
+        f"{macros['protein_g']}g de proteína / {macros['fat_g']}g de gordura / "
+        f"{macros['carbs_g']}g de carboidrato\n"
     )
 
     if days is None:

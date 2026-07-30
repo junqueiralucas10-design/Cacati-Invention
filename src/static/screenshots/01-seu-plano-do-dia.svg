@@ -17,35 +17,35 @@
   <text x="500" y="54" text-anchor="middle" fill="#aab3d9" font-size="13" font-weight="600">nutriforge.app/plan</text>
 
   <!-- heading -->
-  <text x="64" y="130" font-family="'Fraunces',Georgia,serif" font-size="34" font-weight="600" fill="#0b1437">Your plan</text>
+  <text x="64" y="130" font-family="'Fraunces',Georgia,serif" font-size="34" font-weight="600" fill="#0b1437">Seu plano</text>
 
   <!-- targets pill -->
   <rect x="64" y="150" width="700" height="36" rx="18" fill="#ffefe2"/>
-  <text x="86" y="174" fill="#e2540e" font-size="15" font-weight="700">2,600 kcal    ·    164g protein    ·    72g fat    ·    300g carbs</text>
+  <text x="86" y="174" fill="#e2540e" font-size="15" font-weight="700">2.600 kcal  ·  164g proteína  ·  72g gordura  ·  300g carboidrato</text>
 
   <!-- meal 1 -->
   <rect x="64" y="212" width="872" height="104" rx="14" fill="#ffffff" stroke="#e6e9f2"/>
   <text x="88" y="246" font-size="18" font-weight="700" fill="#0b1437">Ovos com batata-doce e banana</text>
   <text x="912" y="246" text-anchor="end" font-size="16" font-weight="700" fill="#5a6480">420 kcal</text>
   <text x="88" y="272" font-size="14" fill="#5a6480">4 ovos mexidos, batata-doce cozida e uma banana.</text>
-  <text x="88" y="296" font-size="13" font-weight="600" fill="#8a93b2">P 34g  /  F 12g  /  C 48g</text>
+  <text x="88" y="296" font-size="13" font-weight="600" fill="#8a93b2">P 34g  /  G 12g  /  C 48g</text>
 
   <!-- meal 2 -->
   <rect x="64" y="332" width="872" height="104" rx="14" fill="#ffffff" stroke="#e6e9f2"/>
   <text x="88" y="366" font-size="18" font-weight="700" fill="#0b1437">Frango com arroz e feijão</text>
   <text x="912" y="366" text-anchor="end" font-size="16" font-weight="700" fill="#5a6480">620 kcal</text>
   <text x="88" y="392" font-size="14" fill="#5a6480">Frango grelhado, arroz, feijão, couve e um fio de azeite.</text>
-  <text x="88" y="416" font-size="13" font-weight="600" fill="#8a93b2">P 55g  /  F 18g  /  C 60g</text>
+  <text x="88" y="416" font-size="13" font-weight="600" fill="#8a93b2">P 55g  /  G 18g  /  C 60g</text>
 
   <!-- meal 3 -->
   <rect x="64" y="452" width="872" height="104" rx="14" fill="#ffffff" stroke="#e6e9f2"/>
   <text x="88" y="486" font-size="18" font-weight="700" fill="#0b1437">Tilápia com mandioca e salada</text>
   <text x="912" y="486" text-anchor="end" font-size="16" font-weight="700" fill="#5a6480">560 kcal</text>
   <text x="88" y="512" font-size="14" fill="#5a6480">Tilápia grelhada, mandioca cozida, tomate e cenoura.</text>
-  <text x="88" y="536" font-size="13" font-weight="600" fill="#8a93b2">P 42g  /  F 22g  /  C 40g</text>
+  <text x="88" y="536" font-size="13" font-weight="600" fill="#8a93b2">P 42g  /  G 22g  /  C 40g</text>
 
   <!-- nutrition check -->
   <circle cx="74" cy="596" r="11" fill="#e6f6ec"/>
   <path d="M 69,596 l 3.5,3.5 l 6.5,-7" fill="none" stroke="#1c9d5b" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-  <text x="94" y="601" font-size="15" font-weight="700" fill="#1c9d5b">Nutrition check passed — stated calories match the macros.</text>
+  <text x="94" y="601" font-size="15" font-weight="700" fill="#1c9d5b">Conferência nutricional ok — as calorias batem com os macros.</text>
 </svg>
