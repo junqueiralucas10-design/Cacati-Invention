@@ -21,7 +21,10 @@ from .profile import UserProfile
 
 _DATA_FILE = Path(__file__).parent / "data" / "foods.json"
 
-_DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+_DAY_NAMES = [
+    "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira",
+    "Sexta-feira", "Sábado", "Domingo",
+]
 
 _ALLERGEN_WORDS = {
     # English
@@ -181,14 +184,19 @@ def _pool(foods: list[Food], group: str, meal_key: str) -> list[Food]:
 def _phrase(items: list[str]) -> str:
     items = [i[:1].upper() + i[1:] for i in items]
     if not items:
-        return "A simple mix"
+        return "Uma combinação simples"
     if len(items) == 1:
         return items[0]
-    return ", ".join(items[:-1]) + " and " + items[-1]
+    return ", ".join(items[:-1]) + " e " + items[-1]
 
 
-def _build_meal(name: str, cal_share: float, targets: dict, foods: list[Food], rot: int) -> dict:
-    meal_key = "snack" if "snack" in name.lower() else name.lower()
+def _build_meal(
+    name: str, meal_key: str, cal_share: float, targets: dict, foods: list[Food], rot: int
+) -> dict:
+    """Build one meal. `name` is the label shown to the user (Portuguese);
+    `meal_key` is the food-database tag used to filter foods (breakfast / lunch /
+    dinner / snack) — the two are separate so the label can be translated
+    without changing which foods are eligible."""
     meal_cal = targets["calories"] * cal_share
     meal_protein = targets["protein_g"] * cal_share
     meal_fat = targets["fat_g"] * cal_share
@@ -295,24 +303,33 @@ def _build_meal(name: str, cal_share: float, targets: dict, foods: list[Food], r
     }
 
 
-def _meal_slots(n: int) -> list[tuple[str, float]]:
-    """Ordered (name, calorie-share) slots for n meals (3-6).
+# Meal slots as (label shown to the user, food-database tag). The tag stays in
+# English because it's a key in data/foods.json, not display text.
+_BREAKFAST = ("Café da manhã", "breakfast")
+_LUNCH = ("Almoço", "lunch")
+_DINNER = ("Jantar", "dinner")
+_MORNING_SNACK = ("Lanche da manhã", "snack")
+_AFTERNOON_SNACK = ("Lanche da tarde", "snack")
+_EVENING_SNACK = ("Lanche da noite", "snack")
+
+_SLOTS_BY_COUNT: dict[int, list[tuple[str, str]]] = {
+    3: [_BREAKFAST, _LUNCH, _DINNER],
+    4: [_BREAKFAST, _LUNCH, _AFTERNOON_SNACK, _DINNER],
+    5: [_BREAKFAST, _MORNING_SNACK, _LUNCH, _AFTERNOON_SNACK, _DINNER],
+    6: [_BREAKFAST, _MORNING_SNACK, _LUNCH, _AFTERNOON_SNACK, _DINNER, _EVENING_SNACK],
+}
+
+
+def _meal_slots(n: int) -> list[tuple[str, str, float]]:
+    """Ordered (label, food-database tag, calorie-share) slots for n meals (3-6).
 
     Main meals (breakfast/lunch/dinner) carry more calories than snacks; snacks
     are placed at natural times of day and all use the 'snack' food filter.
     """
-    n = max(3, min(6, n))
-    if n == 3:
-        names = ["Breakfast", "Lunch", "Dinner"]
-    elif n == 4:
-        names = ["Breakfast", "Lunch", "Afternoon Snack", "Dinner"]
-    elif n == 5:
-        names = ["Breakfast", "Morning Snack", "Lunch", "Afternoon Snack", "Dinner"]
-    else:
-        names = ["Breakfast", "Morning Snack", "Lunch", "Afternoon Snack", "Dinner", "Evening Snack"]
-    weights = [1.0 if "snack" in nm.lower() else 3.0 for nm in names]
+    slots = _SLOTS_BY_COUNT[max(3, min(6, n))]
+    weights = [1.0 if key == "snack" else 3.0 for _, key in slots]
     total = sum(weights)
-    return [(nm, w / total) for nm, w in zip(names, weights)]
+    return [(label, key, w / total) for (label, key), w in zip(slots, weights)]
 
 
 def _resolve_meal_count(profile: UserProfile, calories: int) -> int:
@@ -322,15 +339,15 @@ def _resolve_meal_count(profile: UserProfile, calories: int) -> int:
 
 
 _GOAL_WORD = {
-    "lose_weight": "fat-loss",
-    "gain_muscle": "muscle-building",
-    "maintain": "maintenance",
+    "lose_weight": "para perda de gordura",
+    "gain_muscle": "para ganho de massa",
+    "maintain": "de manutenção",
 }
 
 _NOTES = (
-    "Built from our food database to match your calorie and macro targets. "
-    "Portions are starting points — adjust to appetite. Not medical advice; "
-    "consult a professional for medical conditions."
+    "Montado a partir da nossa base de alimentos para bater suas metas de calorias "
+    "e macros. As porções são um ponto de partida — ajuste ao seu apetite. "
+    "Não é conselho médico; consulte um profissional em caso de condição de saúde."
 )
 
 
@@ -338,8 +355,8 @@ def _build_day_meals(profile: UserProfile, foods: list[Food], rot: int) -> list[
     targets = {"calories": profile.target_calories(), **profile.target_macros()}
     n = _resolve_meal_count(profile, targets["calories"])
     return [
-        _build_meal(name, share, targets, foods, rot + i)
-        for i, (name, share) in enumerate(_meal_slots(n))
+        _build_meal(label, key, share, targets, foods, rot + i)
+        for i, (label, key, share) in enumerate(_meal_slots(n))
     ]
 
 
@@ -347,7 +364,7 @@ def _filtered_or_raise(profile: UserProfile, data_file: Path | None) -> list[Foo
     foods = _filter_foods(_load_foods(data_file), profile)
     if not any(f.group == "protein" for f in foods):
         raise ValueError(
-            "No suitable protein sources for these restrictions — please relax them."
+            "Nenhuma fonte de proteína compatível com essas restrições — tente relaxá-las."
         )
     return foods
 
@@ -358,10 +375,11 @@ def _day_totals(meals: list[dict]) -> dict:
 
 
 def _summary(profile: UserProfile, totals: dict) -> str:
-    word = _GOAL_WORD.get(profile.goal, "balanced")
+    word = _GOAL_WORD.get(profile.goal, "equilibrado")
     return (
-        f"A personalized {word} day at about {totals['calories']} kcal and "
-        f"{totals['protein_g']} g protein, built from whole foods to match your targets."
+        f"Um dia personalizado {word}, com cerca de {totals['calories']} kcal e "
+        f"{totals['protein_g']} g de proteína, montado com comida de verdade "
+        "para bater suas metas."
     )
 
 
@@ -384,7 +402,7 @@ def build_personalized_weekly_plan(
         for d in range(days)
     ]
     summary = (
-        f"A personalized {_GOAL_WORD.get(profile.goal, 'balanced')} {days}-day plan, "
-        "varied across days and matched to your targets."
+        f"Um plano personalizado de {days} dias {_GOAL_WORD.get(profile.goal, 'equilibrado')}, "
+        "variado ao longo dos dias e ajustado às suas metas."
     )
     return {"summary": summary, "days": day_blocks, "notes": _NOTES}

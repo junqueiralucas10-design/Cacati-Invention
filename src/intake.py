@@ -26,11 +26,11 @@ _ACTIVITY_OPTIONS: list[ActivityLevel] = [
 _GOAL_OPTIONS: list[Goal] = ["lose_weight", "gain_muscle", "maintain"]
 
 _ACTIVITY_HELP = {
-    "sedentary": "little or no exercise",
-    "light": "1-3 days/week",
-    "moderate": "3-5 days/week",
-    "active": "6-7 days/week",
-    "very_active": "hard exercise or physical job",
+    "sedentary": "pouco ou nenhum exercício",
+    "light": "1 a 3 dias/semana",
+    "moderate": "3 a 5 dias/semana",
+    "active": "6 a 7 dias/semana",
+    "very_active": "exercício pesado ou trabalho físico",
 }
 
 
@@ -53,9 +53,9 @@ def parse_int_in_range(raw: str, lo: int, hi: int) -> int:
     try:
         value = int(text)
     except ValueError as exc:
-        raise IntakeError(f"'{text}' is not a whole number") from exc
+        raise IntakeError(f"'{text}' não é um número inteiro") from exc
     if not lo <= value <= hi:
-        raise IntakeError(f"value must be between {lo} and {hi}")
+        raise IntakeError(f"o valor precisa estar entre {lo} e {hi}")
     return value
 
 
@@ -65,9 +65,9 @@ def parse_positive_float(raw: str) -> float:
     try:
         value = float(text.replace(",", "."))
     except ValueError as exc:
-        raise IntakeError(f"'{text}' is not a number") from exc
+        raise IntakeError(f"'{text}' não é um número") from exc
     if value <= 0:
-        raise IntakeError("value must be greater than 0")
+        raise IntakeError("o valor precisa ser maior que 0")
     return value
 
 
@@ -79,11 +79,11 @@ def parse_choice(raw: str, options: list[str]) -> str:
         idx = int(text)
         if 1 <= idx <= len(options):
             return options[idx - 1]
-        raise IntakeError(f"choose a number between 1 and {len(options)}")
+        raise IntakeError(f"escolha um número entre 1 e {len(options)}")
     # Name selection
     if text in options:
         return text
-    raise IntakeError(f"'{raw.strip()}' is not one of the choices")
+    raise IntakeError(f"'{raw.strip()}' não é uma das opções")
 
 
 def parse_list(raw: str) -> list[str]:
@@ -103,7 +103,7 @@ def _prompt_until_valid(
         try:
             return parser(raw)
         except IntakeError as exc:
-            output_fn(f"  ! {exc}. Please try again.")
+            output_fn(f"  ! {exc}. Tente de novo.")
 
 
 def _render_choices(options: list[str], help_map: dict[str, str] | None = None) -> str:
@@ -119,48 +119,48 @@ def collect_profile(
     output_fn: OutputFn = print,
 ) -> UserProfile:
     """Interactively build a UserProfile. I/O is injectable for testing."""
-    output_fn("Let's build your profile. Answer each prompt.\n")
+    output_fn("Vamos montar seu perfil. Responda cada pergunta.\n")
 
     age = _prompt_until_valid(
-        "Age (years)", lambda r: parse_int_in_range(r, 13, 120), input_fn, output_fn
+        "Idade (anos)", lambda r: parse_int_in_range(r, 13, 120), input_fn, output_fn
     )
 
-    output_fn("Sex:\n" + _render_choices(_SEX_OPTIONS))
+    output_fn("Sexo:\n" + _render_choices(_SEX_OPTIONS))
     sex = _prompt_until_valid(
-        "Choose sex (number or name)",
+        "Escolha o sexo (número ou nome)",
         lambda r: parse_choice(r, _SEX_OPTIONS),
         input_fn,
         output_fn,
     )
 
     height_cm = _prompt_until_valid(
-        "Height (cm)", parse_positive_float, input_fn, output_fn
+        "Altura (cm)", parse_positive_float, input_fn, output_fn
     )
     weight_kg = _prompt_until_valid(
-        "Weight (kg)", parse_positive_float, input_fn, output_fn
+        "Peso (kg)", parse_positive_float, input_fn, output_fn
     )
 
-    output_fn("Activity level:\n" + _render_choices(_ACTIVITY_OPTIONS, _ACTIVITY_HELP))
+    output_fn("Nível de atividade:\n" + _render_choices(_ACTIVITY_OPTIONS, _ACTIVITY_HELP))
     activity = _prompt_until_valid(
-        "Choose activity level (number or name)",
+        "Escolha o nível de atividade (número ou nome)",
         lambda r: parse_choice(r, _ACTIVITY_OPTIONS),
         input_fn,
         output_fn,
     )
 
-    output_fn("Goal:\n" + _render_choices(_GOAL_OPTIONS))
+    output_fn("Objetivo:\n" + _render_choices(_GOAL_OPTIONS))
     goal = _prompt_until_valid(
-        "Choose goal (number or name)",
+        "Escolha o objetivo (número ou nome)",
         lambda r: parse_choice(r, _GOAL_OPTIONS),
         input_fn,
         output_fn,
     )
 
     restrictions = parse_list(
-        input_fn("Dietary restrictions (comma-separated, blank for none): ")
+        input_fn("Restrições alimentares (separadas por vírgula, vazio para nenhuma): ")
     )
     allergies = parse_list(
-        input_fn("Allergies (comma-separated, blank for none): ")
+        input_fn("Alergias (separadas por vírgula, vazio para nenhuma): ")
     )
 
     return UserProfile(

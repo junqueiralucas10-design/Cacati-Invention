@@ -1,11 +1,12 @@
 # Screenshots
 
 Drop image files here (`.png`, `.jpg`, `.jpeg`, `.webp`, `.gif`) and they appear
-automatically in the "See it in action" gallery on the web UI — no code changes
+automatically in the "Veja funcionando" gallery on the web UI — no code changes
 needed.
 
 - The **filename becomes the caption**: dashes/underscores turn into spaces and
-  it's title-cased. `weekly-plan.png` → "Weekly Plan".
+  only the first word is capitalized. `plano-da-semana.png` → "Plano da semana".
+  (Title-casing every word reads wrong in Portuguese — "Plano Da Semana".)
 - **Order follows the filename**, so prefix with numbers to control placement:
   `01-form.png`, `02-plan.png`, `03-shopping.png`.
 

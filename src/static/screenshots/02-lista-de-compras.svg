@@ -14,8 +14,8 @@
   <rect x="360" y="37" width="280" height="26" rx="13" fill="#182a63"/>
   <text x="500" y="54" text-anchor="middle" fill="#aab3d9" font-size="13" font-weight="600">nutriforge.app/plan#shopping</text>
 
-  <text x="64" y="130" font-family="'Fraunces',Georgia,serif" font-size="34" font-weight="600" fill="#0b1437">🛒 Shopping list</text>
-  <text x="64" y="158" font-size="15" fill="#5a6480">Every ingredient from your plan, combined into one list.</text>
+  <text x="64" y="130" font-family="'Fraunces',Georgia,serif" font-size="34" font-weight="600" fill="#0b1437">🛒 Lista de compras</text>
+  <text x="64" y="158" font-size="15" fill="#5a6480">Todos os ingredientes do seu plano, reunidos em uma lista.</text>
 
   <rect x="64" y="184" width="872" height="472" rx="16" fill="#ffffff" stroke="#e6e9f2"/>
 

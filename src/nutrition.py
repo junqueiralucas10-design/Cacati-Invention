@@ -93,7 +93,7 @@ class Discrepancy:
     """A flagged inconsistency between stated and computed values."""
 
     meal: str
-    field: str          # e.g. "calories"
+    field: str          # display label, e.g. "calorias"
     stated: float
     computed: float
 
@@ -103,8 +103,8 @@ class Discrepancy:
 
     def __str__(self) -> str:
         return (
-            f"{self.meal}: {self.field} stated {self.stated:.0f} "
-            f"vs computed {self.computed:.0f} (off by {self.delta:+.0f})"
+            f"{self.meal}: {self.field} declarado {self.stated:.0f} "
+            f"vs calculado {self.computed:.0f} (diferença de {self.delta:+.0f})"
         )
 
 
@@ -123,11 +123,11 @@ def _verify_meals(
         # Avoid divide-by-zero; use the larger of the two as the denominator.
         denom = max(stated, computed, 1)
         if abs(stated - computed) / denom > tolerance:
-            name = meal.get("name", "(unnamed)")
+            name = meal.get("name", "(sem nome)")
             discrepancies.append(
                 Discrepancy(
                     meal=f"{label_prefix}{name}" if label_prefix else name,
-                    field="calories",
+                    field="calorias",
                     stated=stated,
                     computed=computed,
                 )
@@ -149,7 +149,7 @@ def verify_weekly_plan(weekly: dict, tolerance: float = 0.10) -> list[Discrepanc
     """Like verify_plan, but for a multi-day plan.
 
     Expects {"days": [{"day", "meals": [...]}, ...]}. Flagged meals are labeled
-    with their day, e.g. "Monday — Oatmeal".
+    with their day, e.g. "Segunda-feira — Café da manhã".
     """
     discrepancies: list[Discrepancy] = []
     for day in weekly.get("days", []):

@@ -14,34 +14,34 @@
   <rect x="380" y="37" width="240" height="26" rx="13" fill="#182a63"/>
   <text x="500" y="54" text-anchor="middle" fill="#aab3d9" font-size="13" font-weight="600">nutriforge.app</text>
 
-  <text x="64" y="130" font-family="'Fraunces',Georgia,serif" font-size="34" font-weight="600" fill="#0b1437">Pick your goal</text>
-  <text x="64" y="158" font-size="15" fill="#5a6480">Each option explains exactly what it does to your targets.</text>
+  <text x="64" y="130" font-family="'Fraunces',Georgia,serif" font-size="34" font-weight="600" fill="#0b1437">Escolha seu objetivo</text>
+  <text x="64" y="158" font-size="15" fill="#5a6480">Cada opção explica exatamente o que muda nas suas metas.</text>
 
   <!-- option: lose weight -->
   <rect x="64" y="184" width="872" height="120" rx="14" fill="#ffffff" stroke="#e6e9f2"/>
   <circle cx="102" cy="230" r="12" fill="none" stroke="#c3cadf" stroke-width="2"/>
-  <text x="136" y="228" font-size="20" font-weight="700" fill="#0b1437">Lose weight</text>
-  <text x="136" y="258" font-size="15" fill="#5a6480">A moderate calorie deficit for steady, healthy fat loss</text>
-  <text x="136" y="282" font-size="15" fill="#5a6480">(about 0.5 kg per week).</text>
+  <text x="136" y="228" font-size="20" font-weight="700" fill="#0b1437">Perder peso</text>
+  <text x="136" y="258" font-size="15" fill="#5a6480">Déficit calórico moderado para perda de gordura constante</text>
+  <text x="136" y="282" font-size="15" fill="#5a6480">e saudável (cerca de 0,5 kg por semana).</text>
 
   <!-- option: gain muscle (selected) -->
   <rect x="64" y="320" width="872" height="120" rx="14" fill="#fff6f0" stroke="#ff6a1a" stroke-width="2.5"/>
   <circle cx="102" cy="366" r="12" fill="#ff6a1a"/>
   <circle cx="102" cy="366" r="5" fill="#ffffff"/>
-  <text x="136" y="364" font-size="20" font-weight="700" fill="#0b1437">Gain muscle</text>
+  <text x="136" y="364" font-size="20" font-weight="700" fill="#0b1437">Ganhar massa</text>
   <rect x="330" y="348" width="86" height="24" rx="12" fill="#ff6a1a"/>
-  <text x="373" y="365" text-anchor="middle" font-size="12" font-weight="700" fill="#ffffff">SELECTED</text>
-  <text x="136" y="394" font-size="15" fill="#5a6480">A calorie surplus with high protein to support</text>
-  <text x="136" y="418" font-size="15" fill="#5a6480">lean muscle growth.</text>
+  <text x="373" y="365" text-anchor="middle" font-size="12" font-weight="700" fill="#ffffff">SELECIONADO</text>
+  <text x="136" y="394" font-size="15" fill="#5a6480">Superávit calórico com proteína alta para sustentar</text>
+  <text x="136" y="418" font-size="15" fill="#5a6480">ganho de massa magra.</text>
 
   <!-- option: maintain -->
   <rect x="64" y="456" width="872" height="120" rx="14" fill="#ffffff" stroke="#e6e9f2"/>
   <circle cx="102" cy="502" r="12" fill="none" stroke="#c3cadf" stroke-width="2"/>
-  <text x="136" y="500" font-size="20" font-weight="700" fill="#0b1437">Maintain</text>
-  <text x="136" y="530" font-size="15" fill="#5a6480">Eat at maintenance to hold your current weight</text>
-  <text x="136" y="554" font-size="15" fill="#5a6480">and body composition.</text>
+  <text x="136" y="500" font-size="20" font-weight="700" fill="#0b1437">Manter</text>
+  <text x="136" y="530" font-size="15" fill="#5a6480">Comer na manutenção para segurar o peso</text>
+  <text x="136" y="554" font-size="15" fill="#5a6480">e a composição atuais.</text>
 
   <!-- CTA -->
   <rect x="64" y="606" width="220" height="52" rx="26" fill="#ff6a1a"/>
-  <text x="174" y="639" text-anchor="middle" font-size="17" font-weight="700" fill="#ffffff">Generate my plan</text>
+  <text x="174" y="639" text-anchor="middle" font-size="17" font-weight="700" fill="#ffffff">Gerar meu plano</text>
 </svg>
