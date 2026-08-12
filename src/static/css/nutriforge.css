@@ -8,21 +8,41 @@
  */
 
 :root {
-  /* Colour — warm black through bronze. Never pure #000 or #fff. */
-  --bg: #0e0b09;
-  --surface: #1a1512;
-  --surface-deep: #14100d;
-  --raised: #221b16;
-  --ink: #f2ebe1;
-  --muted: #a2968a;
-  --line: #2e241d;
+  /* Colour — near-monochrome warm black with ONE accent.
+   *
+   * The previous palette ran four competing hues (bronze, caramel, clay and a
+   * sage green). Unrelated accent hues are what made it look assembled rather
+   * than designed. Everything chromatic here is now one gold-bronze; anything
+   * that needs to differ uses a TINT of it, never a new hue.
+   */
+  --bg: #0b0a09;
+  --surface: #141210;
+  --surface-deep: #100e0d;
+  --raised: #1c1917;
+  --ink: #f5f1ea;
+  /* Lightened from #8c8378: the gloss overlays composite white onto the
+     surfaces, so the old grey fell to ~3.6:1 on the glossiest panels. */
+  --muted: #a89e92;
+  --line: #262220;
 
-  --brand: #b87333;        /* bronze — primary */
-  --brand-dark: #c68642;   /* hover: lighter, since we sit on dark */
-  --caramel: #d9a066;      /* secondary data accent */
-  --clay: #9c6b4f;         /* third data accent */
-  --ok: #7d9471;           /* muted sage */
-  --warn: #c1762f;
+  --brand: #c08a4a;        /* the one accent */
+  --brand-dark: #d09b5c;   /* hover — lighter, since we sit on dark */
+  --sheen: #e6c48f;        /* specular highlight only, never a fill */
+
+  /* Data tints — same hue, stepped luminosity. Reads as one system. */
+  --tint-1: #c08a4a;
+  --tint-2: rgba(192, 138, 74, .62);
+  --tint-3: rgba(192, 138, 74, .32);
+
+  --caramel: #d09b5c;      /* kept as an alias so older rules stay valid */
+  --clay: var(--tint-3);
+  --ok: #c08a4a;           /* success reads as the accent + a tick, not a 2nd hue */
+  --warn: #b4643c;
+
+  /* Gloss — the "polished" layer. Applied, never improvised per-component. */
+  --gloss-top: inset 0 1px 0 rgba(255,255,255,.07);
+  --gloss-fill: linear-gradient(180deg, rgba(255,255,255,.045) 0%, rgba(255,255,255,0) 42%);
+  --ring: 0 0 0 1px rgba(255,255,255,.04);
 
   /* Type scale — real jumps, not everything at 15px. */
   --t-xs: 0.75rem;
@@ -107,15 +127,23 @@ nav {
 .nav-links { display: flex; gap: var(--s5); align-items: center; font-weight: 600; font-size: var(--t-sm); }
 .nav-links a { text-decoration: none; color: var(--muted); transition: color var(--fast) var(--ease); }
 .nav-links a:hover { color: var(--ink); }
+/* The CTA in the nav is an <a class="btn">, and `.nav-links a` (0,1,1) would
+   otherwise beat `.btn` (0,1,0) and paint muted grey text onto the bronze fill —
+   1.24:1, unreadable. Match the specificity so the button keeps its own ink. */
+.nav-links a.btn, .nav-links a.btn:hover { color: #191207; }
 
+/* Polished metal: a light-to-dark fill, a specular top edge and a tight shadow. */
 .btn {
   display: inline-block; border: 0; cursor: pointer; text-decoration: none;
   padding: 12px 22px; border-radius: 999px; font: inherit; font-weight: 700;
-  background: var(--brand); color: #17110c;
-  transition: background var(--fast) var(--ease), transform var(--fast) var(--ease);
+  color: #191207;
+  background: linear-gradient(180deg, var(--brand-dark) 0%, var(--brand) 55%, #a8763c 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.32), 0 8px 20px -10px rgba(192,138,74,.75);
+  transition: filter var(--fast) var(--ease), transform var(--fast) var(--ease),
+              box-shadow var(--fast) var(--ease);
 }
-.btn:hover { background: var(--brand-dark); }
-.btn:active { transform: translateY(1px); }
+.btn:hover { filter: brightness(1.07); }
+.btn:active { transform: translateY(1px); box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 4px 12px -8px rgba(192,138,74,.7); }
 .btn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
 .btn.ghost:hover { background: var(--raised); }
 .btn.big { padding: 15px 28px; font-size: 1.02rem; }
@@ -125,7 +153,7 @@ nav {
 /* ---------- Hero ---------- */
 .hero {
   background:
-    radial-gradient(110% 90% at 78% 0%, rgba(184,115,51,.20) 0%, rgba(184,115,51,0) 62%),
+    radial-gradient(110% 90% at 78% 0%, rgba(192,138,74,.22) 0%, rgba(192,138,74,0) 62%),
     var(--surface-deep);
   border-bottom: 1px solid var(--line);
   padding: var(--s8) 0;
@@ -142,8 +170,11 @@ nav {
 
 /* Hero panel — a real instrument readout, not a decorative card. */
 .hero-card {
-  background: var(--surface); border: 1px solid var(--line);
-  border-radius: var(--radius); padding: var(--s5); box-shadow: var(--shadow);
+  background: var(--gloss-fill), var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius); padding: var(--s5);
+  box-shadow: var(--gloss-top), var(--shadow);
+  backdrop-filter: blur(6px);
 }
 .hero-card h4 { margin: 0 0 var(--s3); color: var(--caramel); font-family: inherit; }
 .hc-row {
@@ -161,9 +192,14 @@ section.pad { padding: var(--s8) 0; }
 
 .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s4); }
 .card {
-  background: var(--surface); border: 1px solid var(--line);
-  border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden;
+  background: var(--gloss-fill), var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--gloss-top), var(--shadow);
+  overflow: hidden;
+  transition: transform var(--base) var(--ease), box-shadow var(--base) var(--ease);
 }
+.card:hover { transform: translateY(-2px); box-shadow: var(--gloss-top), 0 22px 48px -26px rgba(0,0,0,.95); }
 .card-img { width: 100%; height: 180px; object-fit: cover; display: block;
             filter: saturate(.85) contrast(1.05) brightness(.85); }
 .card-body { padding: var(--s5); }
@@ -214,10 +250,12 @@ button[type=submit] { justify-self: start; }
 
 .target-panel {
   background:
-    radial-gradient(120% 110% at 15% 0%, rgba(217,160,102,.13) 0%, rgba(217,160,102,0) 60%),
-    var(--surface-deep);
+    var(--gloss-fill),
+    radial-gradient(120% 110% at 15% 0%, rgba(192,138,74,.16) 0%, rgba(192,138,74,0) 62%),
+    var(--surface);
   border: 1px solid var(--line); border-radius: var(--radius);
-  padding: var(--s5); box-shadow: var(--shadow);
+  padding: var(--s5);
+  box-shadow: var(--gloss-top), var(--shadow);
 }
 .target-kcal {
   font-family: "Oswald", sans-serif; font-size: var(--t-2xl); font-weight: 700;
@@ -230,17 +268,19 @@ button[type=submit] { justify-self: start; }
   display: flex; height: 10px; border-radius: 999px; overflow: hidden;
   margin: var(--s4) 0 var(--s3); background: var(--raised);
 }
+/* One hue, three luminosity steps — not three different colours. */
 .macro-seg { height: 100%; }
-.macro-seg.p { background: var(--brand); }
-.macro-seg.c { background: var(--caramel); }
-.macro-seg.g { background: var(--clay); }
+.macro-seg.p { background: var(--tint-1); }
+.macro-seg.c { background: var(--tint-2); }
+.macro-seg.g { background: var(--tint-3); }
+.macro-bar { box-shadow: var(--gloss-top); }
 
 .macro-legend { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s3); }
 .macro-item { display: flex; align-items: baseline; gap: var(--s2); }
 .swatch { width: 9px; height: 9px; border-radius: 3px; flex: none; transform: translateY(-1px); }
-.swatch.p { background: var(--brand); }
-.swatch.c { background: var(--caramel); }
-.swatch.g { background: var(--clay); }
+.swatch.p { background: var(--tint-1); }
+.swatch.c { background: var(--tint-2); }
+.swatch.g { background: var(--tint-3); }
 .macro-name { color: var(--muted); }
 .macro-g { margin-left: auto; font-weight: 700; font-size: var(--t-sm); }
 
@@ -252,8 +292,10 @@ button[type=submit] { justify-self: start; }
 
 /* Day block — one surface, meals as rows on a timeline rail. */
 .day-card {
-  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
-  padding: var(--s5); margin: var(--s4) 0; box-shadow: var(--shadow);
+  background: var(--gloss-fill), var(--surface);
+  border: 1px solid var(--line); border-radius: var(--radius);
+  padding: var(--s5); margin: var(--s4) 0;
+  box-shadow: var(--gloss-top), var(--shadow);
 }
 .day-head {
   display: flex; align-items: baseline; justify-content: space-between;
@@ -301,8 +343,9 @@ button[type=submit] { justify-self: start; }
 .flagbox li, .shop li { margin: 3px 0; }
 
 .shop {
-  background: var(--surface); border: 1px solid var(--line);
-  border-radius: var(--radius); padding: var(--s5); box-shadow: var(--shadow);
+  background: var(--gloss-fill), var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: var(--s5);
+  box-shadow: var(--gloss-top), var(--shadow);
 }
 .shop h3 { font-size: var(--t-md); display: flex; align-items: center; gap: var(--s2); margin: 0; }
 .shop ul { list-style: none; padding: 0; }
@@ -313,8 +356,13 @@ button[type=submit] { justify-self: start; }
 .shop li:last-child { border-bottom: 0; }
 
 .cost {
-  background: var(--surface-deep); border: 1px solid var(--line);
+  background:
+    var(--gloss-fill),
+    radial-gradient(100% 120% at 50% 0%, rgba(192,138,74,.14) 0%, rgba(192,138,74,0) 65%),
+    var(--surface);
+  border: 1px solid var(--line);
   border-radius: var(--radius); padding: var(--s5); margin: var(--s4) 0; text-align: center;
+  box-shadow: var(--gloss-top), var(--shadow);
 }
 .cost-amount { font-family: "Oswald", sans-serif; font-size: var(--t-xl); font-weight: 700; color: var(--brand); }
 .cost-sub { color: var(--muted); font-size: var(--t-sm); margin-top: var(--s1); }
