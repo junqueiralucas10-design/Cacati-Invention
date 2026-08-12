@@ -129,6 +129,19 @@ def _parse_days(form) -> int | None:
     return int(raw) if raw.isdigit() else None
 
 
+def _fmt_int_br(value) -> str:
+    """Format an integer with pt-BR thousands separators: 3071 -> '3.071'.
+
+    Registered as the `br` Jinja filter so every figure on the page is grouped
+    the same way — mixing "3071" and "2.600" is exactly the kind of detail that
+    makes a page look unfinished.
+    """
+    try:
+        return f"{int(value):,}".replace(",", ".")
+    except (TypeError, ValueError):
+        return str(value)
+
+
 _IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg"}
 
 
@@ -183,6 +196,7 @@ def create_app(generate: Generator | None = None, price_file=None) -> Flask:
     """price_file overrides the prices JSON path (used by tests to avoid
     writing the repo's real data file)."""
     app = Flask(__name__)
+    app.jinja_env.filters["br"] = _fmt_int_br
     gen = generate or _default_generate
 
     @app.get("/")
@@ -296,163 +310,13 @@ _PAGE = """
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ brand.NAME }} — dieta personalizada para ganhar massa ou perder peso</title>
   <meta name="description" content="{{ brand.POSITIONING }} Plano alimentar que bate suas metas de calorias e macros, com lista de compras e custo estimado em R$.">
+  <meta name="theme-color" content="#0E0B09">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <!-- Non-blocking: enhances typography when online, falls back to serif/sans instantly otherwise. -->
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-  <noscript><link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
-  <style>
-    :root {
-      --bg: #f4f6fb;
-      --surface: #ffffff;
-      --ink: #0b1437;
-      --muted: #5a6480;
-      --line: #e6e9f2;
-      --brand: #ff6a1a;
-      --brand-dark: #e2540e;
-      --hero-1: #0a1130;
-      --hero-2: #1a2b66;
-      --lime: #c6f24e;
-      --accent: #ff6a1a;
-      --ok: #1c9d5b;
-      --shadow: 0 12px 34px rgba(11, 20, 55, 0.10);
-      --radius: 16px;
-    }
-    * { box-sizing: border-box; }
-    html { scroll-behavior: smooth; }
-    body {
-      margin: 0; background: var(--bg); color: var(--ink);
-      font-family: "Manrope", system-ui, -apple-system, sans-serif;
-      line-height: 1.55; -webkit-font-smoothing: antialiased;
-    }
-    h1, h2, h3 { font-family: "Fraunces", Georgia, serif; line-height: 1.1; letter-spacing: -0.01em; }
-    a { color: inherit; }
-    .wrap { max-width: 1080px; margin: 0 auto; padding: 0 20px; }
-
-    /* Nav */
-    nav {
-      position: sticky; top: 0; z-index: 20; backdrop-filter: blur(8px);
-      background: rgba(246,248,244,0.85); border-bottom: 1px solid var(--line);
-    }
-    .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 66px; }
-    .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.15rem; }
-    .brand .dot { width: 26px; height: 26px; border-radius: 8px; background: linear-gradient(135deg, var(--brand), var(--hero-2)); display: inline-block; }
-    .nav-links { display: flex; gap: 26px; align-items: center; font-weight: 600; font-size: 0.95rem; }
-    .nav-links a { text-decoration: none; color: var(--muted); }
-    .nav-links a:hover { color: var(--ink); }
-    .btn {
-      display: inline-block; border: 0; cursor: pointer; text-decoration: none;
-      padding: 12px 22px; border-radius: 999px; font: inherit; font-weight: 700;
-      background: var(--brand); color: #fff; transition: transform .06s ease, background .2s ease;
-    }
-    .btn:hover { background: var(--brand-dark); }
-    .btn:active { transform: translateY(1px); }
-    .btn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
-    .btn.big { padding: 16px 30px; font-size: 1.05rem; }
-
-    /* Hero */
-    .hero { background: radial-gradient(120% 120% at 80% 0%, var(--hero-2), var(--hero-1)); color: #e9ecff; padding: 76px 0 90px; }
-    .hero .wrap { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 40px; align-items: center; }
-    .eyebrow { display: inline-block; font-weight: 700; font-size: 0.82rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--lime); margin-bottom: 14px; }
-    .hero h1 { font-size: clamp(2.3rem, 5vw, 3.6rem); font-weight: 600; color: #fff; margin: 0 0 16px; }
-    .hero p.lead { font-size: 1.15rem; color: #b9c2e6; margin: 0 0 26px; max-width: 30ch; }
-    .hero-cta { display: flex; gap: 14px; flex-wrap: wrap; }
-    .btn.lime { background: var(--lime); color: #0a1130; }
-    .btn.lime:hover { background: #b6e83f; }
-    .stats { display: flex; gap: 28px; margin-top: 34px; }
-    .stat b { font-family: "Fraunces", serif; font-size: 1.6rem; display: block; color: #fff; }
-    .stat span { font-size: 0.85rem; color: #9aa4cf; }
-    .hero-card { background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.15); border-radius: 20px; padding: 22px; }
-    .hero-card h4 { margin: 0 0 12px; font-family: "Manrope"; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--lime); }
-    .hc-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dashed rgba(255,255,255,0.15); color: #e9ecff; }
-    .hc-row:last-child { border-bottom: 0; }
-    .hc-row span { color: #aab3d9; }
-
-    /* Sections */
-    section.pad { padding: 72px 0; }
-    .section-head { text-align: center; max-width: 620px; margin: 0 auto 42px; }
-    .section-head h2 { font-size: clamp(1.8rem, 3.5vw, 2.5rem); font-weight: 600; margin: 0 0 12px; }
-    .section-head p { color: var(--muted); font-size: 1.08rem; margin: 0; }
-    .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
-    .card {
-      background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
-      box-shadow: var(--shadow); overflow: hidden;
-    }
-    .card-img { width: 100%; height: 190px; object-fit: cover; display: block; }
-    .card-body { padding: 24px; }
-    .card .ico { font-size: 1.8rem; }
-    .card h3 { font-size: 1.25rem; margin: 0 0 8px; }
-    .card p { color: var(--muted); margin: 0; }
-
-    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; counter-reset: step; }
-    .step { position: relative; padding-left: 8px; }
-    .step .n { width: 40px; height: 40px; border-radius: 50%; background: #ffefe2; color: var(--brand-dark); font-weight: 800; display: grid; place-items: center; font-family: "Fraunces", serif; }
-    .step h3 { font-size: 1.15rem; margin: 14px 0 6px; }
-    .step p { color: var(--muted); margin: 0; }
-
-    /* Planner form */
-    .planner { background: linear-gradient(180deg, #eef1f9, var(--bg)); }
-    .form-card { background: var(--surface); border: 1px solid var(--line); border-radius: 22px; box-shadow: var(--shadow); padding: 34px; max-width: 720px; margin: 0 auto; }
-    form { display: grid; gap: 18px; }
-    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
-    label { display: grid; gap: 6px; font-weight: 700; font-size: 0.92rem; }
-    input, select { padding: 12px 14px; font: inherit; border: 1px solid #d7ded4; border-radius: 12px; background: #fcfdfb; }
-    input:focus, select:focus { outline: 2px solid rgba(255,106,26,0.35); border-color: var(--brand); }
-    .hint { font-weight: 500; font-size: 0.85rem; color: var(--muted); min-height: 1.1em; }
-    .error { background: #fdecec; color: #a12626; border: 1px solid #f6cccc; padding: 12px 14px; border-radius: 12px; font-weight: 600; }
-    button[type=submit] { justify-self: start; }
-
-    /* Results */
-    .result-wrap { max-width: 760px; margin: 34px auto 0; }
-    .targets-pill { display: inline-flex; gap: 10px; flex-wrap: wrap; background: #ffefe2; color: var(--brand-dark); border-radius: 999px; padding: 10px 18px; font-weight: 700; }
-    .day-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; margin: 16px 0; box-shadow: var(--shadow); }
-    .day-card h3 { margin: 0 0 10px; }
-    .meal { padding: 12px 0; border-bottom: 1px solid #f0f3ee; }
-    .meal:last-child { border-bottom: 0; }
-    .meal .macros { color: var(--muted); font-size: 0.9rem; }
-    .pass { color: var(--ok); font-weight: 700; }
-    .flagbox { background: #fff6ec; border: 1px solid #f6dcbf; border-radius: 12px; padding: 14px 16px; color: #8a5a1c; }
-    .shop { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); }
-    .shop ul, .flagbox ul { margin: 8px 0 0; padding-left: 20px; }
-    .shop li, .flagbox li { margin: 3px 0; }
-    .cost { background: #fff6ef; border: 1px solid #f6dcbf; border-radius: var(--radius); padding: 18px 20px; margin: 16px 0; text-align: center; }
-    .cost-amount { font-family: "Fraunces", Georgia, serif; font-size: 2rem; font-weight: 600; color: var(--brand-dark); }
-    .cost-sub { color: var(--muted); font-size: 0.9rem; margin-top: 4px; }
-
-    /* Testimonial */
-    .quote { text-align: center; max-width: 720px; margin: 0 auto; }
-    .quote p { font-family: "Fraunces", serif; font-size: 1.5rem; font-weight: 500; line-height: 1.35; }
-    .quote .who { color: var(--muted); font-family: "Manrope"; font-size: 0.95rem; font-weight: 600; }
-    .manifesto { max-width: 700px; margin: 0 auto 44px; }
-    .manifesto p { font-family: "Fraunces", serif; font-size: 1.22rem; line-height: 1.5; margin: 0 0 18px; }
-    .manifesto p:first-child { font-size: 1.45rem; font-weight: 600; }
-    .manifesto p:last-child { color: var(--brand-dark); font-weight: 600; margin-bottom: 0; }
-    .quotes { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
-    .qcard { margin: 0; background: var(--surface); border: 1px solid var(--line);
-             border-left: 4px solid var(--brand); border-radius: 14px; padding: 22px 24px; }
-    .qcard blockquote { margin: 0 0 12px; font-family: "Fraunces", serif; font-size: 1.05rem;
-                        line-height: 1.45; }
-    .qcard figcaption { color: var(--muted); font-size: 0.9rem; font-weight: 600; }
-    .quotes-note { text-align: center; color: var(--muted); font-size: 0.85rem; margin: 22px 0 0; }
-
-    /* Footer */
-    footer { background: var(--hero-1); color: #aab3d9; padding: 40px 0; margin-top: 20px; }
-    footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 16px; align-items: center; }
-    footer .disclaimer { font-size: 0.85rem; max-width: 46ch; }
-
-    /* Screenshot gallery */
-    .shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 22px; }
-    .shot { margin: 0; }
-    .shot img { width: 100%; height: auto; display: block; border-radius: 14px; border: 1px solid var(--line); box-shadow: var(--shadow); background: var(--surface); }
-    .shot figcaption { margin-top: 10px; text-align: center; color: var(--muted); font-weight: 600; font-size: 0.92rem; }
-
-    @media (max-width: 820px) {
-      .hero .wrap { grid-template-columns: 1fr; }
-      .grid3, .steps, .quotes { grid-template-columns: 1fr; }
-      .row { grid-template-columns: 1fr; }
-      .nav-links { display: none; }
-    }
-  </style>
+  <!-- Non-blocking: enhances typography when online, falls back instantly otherwise. -->
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
+  <link rel="stylesheet" href="/static/css/nutriforge.css">
 </head>
 <body>
   <nav>
@@ -476,7 +340,7 @@ _PAGE = """
         <p class="lead">{{ brand.LEAD }}</p>
         <div class="hero-cta">
           <a class="btn lime big" href="#plan">Montar meu plano — grátis</a>
-          <a class="btn ghost big" href="#manifesto" style="color:#e9ecff;border-color:rgba(255,255,255,0.3)">O que a gente acredita</a>
+          <a class="btn ghost big" href="#manifesto">O que a gente acredita</a>
         </div>
         <div class="stats">
           <div class="stat"><b>3&nbsp;seg</b><span>para o plano pronto</span></div>
@@ -484,13 +348,19 @@ _PAGE = """
           <div class="stat"><b>0</b><span>planilhas</span></div>
         </div>
       </div>
+      {# Same instrument readout the app shows, so the surfaces match. #}
       <div class="hero-card">
         <h4>Exemplo de meta diária</h4>
-        <div class="hc-row">Calorias <span>2.600 kcal</span></div>
+        <p class="target-kcal">2.600<small>kcal</small></p>
+        <div class="macro-bar" role="img" aria-label="Proteína 25%, carboidrato 46%, gordura 29% das calorias">
+          <span class="macro-seg p" style="width:25%"></span>
+          <span class="macro-seg c" style="width:46%"></span>
+          <span class="macro-seg g" style="width:29%"></span>
+        </div>
         <div class="hc-row">Proteína <span>164 g</span></div>
         <div class="hc-row">Carboidrato <span>300 g</span></div>
         <div class="hc-row">Gordura <span>72 g</span></div>
-        <div class="hc-row">Lista de compras <span>✓ incluída</span></div>
+        <div class="hc-row">Lista de compras <span>incluída</span></div>
       </div>
     </div>
   </header>
@@ -528,21 +398,21 @@ _PAGE = """
       <div class="grid3">
         <div class="card">
           <img class="card-img" src="/static/images/meals-spread.jpg" alt="Refeições saudáveis variadas sobre a mesa" loading="lazy">
-          <div class="card-body"><h3>🎯 Metas no ponto</h3><p>Calculamos suas calorias e macros a partir do seu corpo, da sua rotina e do seu objetivo — e montamos as refeições em cima disso.</p></div>
+          <div class="card-body"><h3>Metas no ponto</h3><p>Calculamos suas calorias e macros a partir do seu corpo, da sua rotina e do seu objetivo — e montamos as refeições em cima disso.</p></div>
         </div>
         <div class="card">
           <img class="card-img" src="/static/images/poke-bowl.jpg" alt="Poke bowl colorido com legumes" loading="lazy">
-          <div class="card-body"><h3>✅ Números conferidos</h3><p>As calorias de cada refeição são checadas contra os macros, então a conta do plano realmente fecha.</p></div>
+          <div class="card-body"><h3>Números conferidos</h3><p>As calorias de cada refeição são checadas contra os macros, então a conta do plano realmente fecha.</p></div>
         </div>
         <div class="card">
           <img class="card-img" src="/static/images/meal-prep.jpg" alt="Potes de marmita com frango grelhado" loading="lazy">
-          <div class="card-body"><h3>🛒 Lista de compras automática</h3><p>Os ingredientes de todas as refeições viram uma lista só — pronta para a próxima ida ao mercado.</p></div>
+          <div class="card-body"><h3>Lista de compras automática</h3><p>Os ingredientes de todas as refeições viram uma lista só — pronta para a próxima ida ao mercado.</p></div>
         </div>
       </div>
     </div>
   </section>
 
-  <section class="pad" id="how" style="background:#eef1f9">
+  <section class="pad band" id="how">
     <div class="wrap">
       <div class="section-head"><h2>Três passos até o seu plano</h2><p>Dos seus dados a um dia (ou uma semana) de refeições em segundos.</p></div>
       <div class="steps">
@@ -581,7 +451,7 @@ _PAGE = """
       </div>
 
       <div class="form-card">
-        {% if error %}<div class="error">⚠ {{ error }}</div>{% endif %}
+        {% if error %}<div class="error">{{ error }}</div>{% endif %}
         <form method="post" action="/plan">
           <div class="row">
             <label>Idade
@@ -613,10 +483,10 @@ _PAGE = """
             </select>
             <span class="hint" id="goal-hint"></span>
           </label>
-          <label>Restrições alimentares <span style="font-weight:500;color:var(--muted)">(separadas por vírgula, opcional)</span>
+          <label>Restrições alimentares <span class="opt">(separadas por vírgula, opcional)</span>
             <input name="dietary_restrictions" type="text" value="{{ form.get('dietary_restrictions', '') }}" placeholder="ex.: vegetariano, sem lactose">
           </label>
-          <label>Alergias <span style="font-weight:500;color:var(--muted)">(separadas por vírgula, opcional)</span>
+          <label>Alergias <span class="opt">(separadas por vírgula, opcional)</span>
             <input name="allergies" type="text" value="{{ form.get('allergies', '') }}" placeholder="ex.: frutos do mar">
           </label>
           <div class="row">
@@ -639,42 +509,87 @@ _PAGE = """
 
       {% if result %}
         <div class="result-wrap">
-          <h2 style="text-align:center">Seu plano</h2>
-          <div style="text-align:center;margin-bottom:16px">
-            <span class="targets-pill">
-              <span>{{ result.targets.calories }} kcal</span>·
-              <span>{{ result.targets.protein_g }}g de proteína</span>·
-              <span>{{ result.targets.fat_g }}g de gordura</span>·
-              <span>{{ result.targets.carbs_g }}g de carboidrato</span>
-            </span>
+          <div class="section-head"><h2>Seu plano</h2></div>
+
+          {# Energy share per macro: 4 kcal/g protein and carbs, 9 kcal/g fat. #}
+          {% set p_kcal = result.targets.protein_g * 4 %}
+          {% set c_kcal = result.targets.carbs_g * 4 %}
+          {% set g_kcal = result.targets.fat_g * 9 %}
+          {% set tot_kcal = (p_kcal + c_kcal + g_kcal) or 1 %}
+
+          <div class="target-panel">
+            <p class="nf-label">Sua meta diária</p>
+            <p class="target-kcal">{{ result.targets.calories | br }}<small>kcal</small></p>
+
+            <div class="macro-bar" role="img"
+                 aria-label="Proteína {{ (p_kcal / tot_kcal * 100) | round }}%, carboidrato {{ (c_kcal / tot_kcal * 100) | round }}%, gordura {{ (g_kcal / tot_kcal * 100) | round }}% das calorias">
+              <span class="macro-seg p" style="width:{{ (p_kcal / tot_kcal * 100) | round(2) }}%"></span>
+              <span class="macro-seg c" style="width:{{ (c_kcal / tot_kcal * 100) | round(2) }}%"></span>
+              <span class="macro-seg g" style="width:{{ (g_kcal / tot_kcal * 100) | round(2) }}%"></span>
+            </div>
+
+            <div class="macro-legend">
+              <div class="macro-item"><span class="swatch p"></span><span class="macro-name">Proteína</span><span class="macro-g">{{ result.targets.protein_g }} g</span></div>
+              <div class="macro-item"><span class="swatch c"></span><span class="macro-name">Carboidrato</span><span class="macro-g">{{ result.targets.carbs_g }} g</span></div>
+              <div class="macro-item"><span class="swatch g"></span><span class="macro-name">Gordura</span><span class="macro-g">{{ result.targets.fat_g }} g</span></div>
+            </div>
+
+            {% if not result.flags %}
+              <p class="target-sub">
+                <span class="pass">
+                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  Conferência nutricional ok
+                </span>
+              </p>
+            {% endif %}
           </div>
-          <p style="text-align:center;color:var(--muted)">{{ result.summary }}</p>
+
+          <p class="plan-summary">{{ result.summary }}</p>
 
           {% for block in result.day_blocks %}
+            {% set day_kcal = block.meals | sum(attribute='calories') %}
             <div class="day-card">
-              {% if block.day %}<h3>{{ block.day }}</h3>{% endif %}
+              <div class="day-head">
+                <h3>{{ block.day if block.day else 'Seu dia' }}</h3>
+                <span class="day-total">{{ day_kcal | br }} kcal</span>
+              </div>
               {% for meal in block.meals %}
                 <div class="meal">
-                  <strong>{{ meal.name }}</strong> — {{ meal.calories }} kcal<br>
-                  <span>{{ meal.description }}</span><br>
-                  <span class="macros">P {{ meal.protein_g }}g / G {{ meal.fat_g }}g / C {{ meal.carbs_g }}g</span>
+                  <div class="meal-head">
+                    <strong>{{ meal.name }}</strong>
+                    <span class="meal-kcal">{{ meal.calories | br }} kcal</span>
+                  </div>
+                  {% if meal.ingredients %}
+                    <div class="ing">
+                      {% for ing in meal.ingredients %}
+                        <span class="ing-q">{{ ing.quantity }}{% if ing.unit %} {{ ing.unit }}{% endif %}</span>
+                        <span class="ing-n">{{ ing.item }}</span>
+                      {% endfor %}
+                    </div>
+                  {% else %}
+                    <p class="ing-n">{{ meal.description }}</p>
+                  {% endif %}
+                  <div class="macros">P {{ meal.protein_g }} g · C {{ meal.carbs_g }} g · G {{ meal.fat_g }} g</div>
+                  <div class="meal-share"><i style="width:{{ (meal.calories / (day_kcal or 1) * 100) | round(2) }}%"></i></div>
                 </div>
               {% endfor %}
             </div>
           {% endfor %}
 
-          <p style="color:var(--muted)">{{ result.notes }}</p>
+          <p class="plan-notes">{{ result.notes }}</p>
 
           {% if result.flags %}
-            <div class="flagbox"><strong>⚠ A conferência nutricional sinalizou refeições:</strong>
+            <div class="flagbox"><strong>A conferência nutricional sinalizou refeições:</strong>
               <ul>{% for f in result.flags %}<li>{{ f }}</li>{% endfor %}</ul>
             </div>
-          {% else %}
-            <p class="pass">✓ Conferência nutricional ok — as calorias batem com os macros.</p>
           {% endif %}
 
           {% if result.shopping %}
-            <div class="shop"><strong>🛒 Lista de compras</strong>
+            <div class="shop">
+              <h3>
+                <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M3 5h14l-1.4 8.2a2 2 0 01-2 1.8H6.4a2 2 0 01-2-1.8L3 5zM7 5V3.8A2.2 2.2 0 019.2 1.6h1.6A2.2 2.2 0 0113 3.8V5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Lista de compras
+              </h3>
               <ul>{% for item in result.shopping %}<li>{{ item }}</li>{% endfor %}</ul>
             </div>
           {% endif %}
@@ -701,7 +616,7 @@ _PAGE = """
 
   <footer>
     <div class="wrap">
-      <div class="brand" style="color:#fff"><span class="dot"></span> NutriForge</div>
+      <div class="brand"><span class="dot"></span> NutriForge</div>
       <div class="disclaimer">Não é conselho médico. Os planos são estimativas informativas — consulte um profissional em caso de condição de saúde.<br>Fotos de alimentos via Pexels (licença livre).</div>
     </div>
   </footer>
@@ -733,35 +648,11 @@ _PRICES_PAGE = """
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>NutriForge — Ajuste de preços</title>
-  <style>
-    :root { --bg:#f4f6fb; --surface:#fff; --ink:#0b1437; --muted:#5a6480; --line:#e6e9f2;
-            --brand:#ff6a1a; --brand-dark:#e2540e; }
-    * { box-sizing: border-box; }
-    body { margin:0; background:var(--bg); color:var(--ink);
-           font-family:"Manrope",system-ui,sans-serif; line-height:1.5; }
-    .wrap { max-width:820px; margin:0 auto; padding:32px 20px 60px; }
-    h1 { font-family:Georgia,serif; margin:0 0 6px; }
-    .sub { color:var(--muted); margin:0 0 22px; }
-    a.back { color:var(--brand-dark); font-weight:700; text-decoration:none; }
-    .bar { display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin:18px 0; }
-    .btn { display:inline-block; border:0; cursor:pointer; text-decoration:none;
-           padding:10px 18px; border-radius:999px; font:inherit; font-weight:700;
-           background:var(--brand); color:#fff; }
-    .btn.ghost { background:transparent; color:var(--ink); border:1px solid var(--line); }
-    .ok { background:#e6f6ec; color:#166534; border:1px solid #bfe6cd;
-          padding:10px 14px; border-radius:10px; font-weight:600; margin:12px 0; }
-    .warn { background:#fff6ec; color:#8a5a1c; border:1px solid #f6dcbf;
-            padding:10px 14px; border-radius:10px; margin:12px 0; font-size:0.92rem; }
-    table { width:100%; border-collapse:collapse; background:var(--surface);
-            border:1px solid var(--line); border-radius:12px; overflow:hidden; }
-    th, td { text-align:left; padding:10px 14px; border-bottom:1px solid var(--line); }
-    th { background:#eef1f9; font-size:0.85rem; text-transform:uppercase;
-         letter-spacing:0.04em; color:var(--muted); }
-    tr:last-child td { border-bottom:0; }
-    input[type=text] { width:110px; padding:7px 10px; font:inherit;
-                       border:1px solid #d7ded4; border-radius:8px; text-align:right; }
-    .note { color:var(--muted); font-size:0.88rem; margin-top:16px; }
-  </style>
+  <meta name="theme-color" content="#0E0B09">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <link rel="stylesheet" href="/static/css/nutriforge.css">
 </head>
 <body>
   <div class="wrap">
@@ -770,7 +661,7 @@ _PRICES_PAGE = """
     <p class="sub">Reference grocery prices in <strong>R$ per kg</strong>, used for the plan cost estimate.
        Edit inline, or export/import a CSV to update them in a spreadsheet.</p>
 
-    {% if saved %}<div class="ok">✓ Prices saved.</div>{% endif %}
+    {% if saved %}<div class="ok">Prices saved.</div>{% endif %}
     {% if skipped %}
       <div class="warn"><strong>Skipped (not saved):</strong>
         {% for s in skipped %}<div>{{ s }}</div>{% endfor %}
@@ -779,7 +670,7 @@ _PRICES_PAGE = """
 
     <div class="bar">
       <a class="btn ghost" href="/prices.csv">⬇ Export CSV</a>
-      <form method="post" action="/prices/import" enctype="multipart/form-data" style="display:flex;gap:8px;align-items:center">
+      <form method="post" action="/prices/import" enctype="multipart/form-data" class="import-form">
         <input type="file" name="csv_file" accept=".csv,text/csv" required>
         <button class="btn ghost" type="submit">⬆ Import CSV</button>
       </form>
@@ -787,11 +678,11 @@ _PRICES_PAGE = """
 
     <form method="post" action="/prices">
       <table>
-        <tr><th>Food</th><th style="text-align:right">R$ / kg</th></tr>
+        <tr><th>Food</th><th class="right">R$ / kg</th></tr>
         {% for name, price in prices %}
           <tr>
             <td>{{ name }}</td>
-            <td style="text-align:right">
+            <td class="right">
               <input type="text" inputmode="decimal" name="{{ name }}" value="{{ '%.2f' % price }}">
             </td>
           </tr>
