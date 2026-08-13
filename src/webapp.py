@@ -310,7 +310,7 @@ _PAGE = """
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ brand.NAME }} — dieta personalizada para ganhar massa ou perder peso</title>
   <meta name="description" content="{{ brand.POSITIONING }} Plano alimentar que bate suas metas de calorias e macros, com lista de compras e custo estimado em R$.">
-  <meta name="theme-color" content="#0E0B09">
+  <meta name="theme-color" content="#0b0a09">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <!-- Non-blocking: enhances typography when online, falls back instantly otherwise. -->
@@ -648,7 +648,7 @@ _PRICES_PAGE = """
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>NutriForge — Ajuste de preços</title>
-  <meta name="theme-color" content="#0E0B09">
+  <meta name="theme-color" content="#0b0a09">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
