@@ -1,2 +1,5 @@
-anthropic>=0.116.0
-flask>=3.0
+# Upper bounds pin out surprise major releases (supply-chain: a future release
+# is otherwise installed automatically). A hash-pinned lockfile is the fuller
+# fix if this ever gets a deploy pipeline.
+anthropic>=0.116.0,<1.0
+flask>=3.0,<4.0
