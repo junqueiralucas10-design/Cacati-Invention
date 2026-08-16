@@ -196,6 +196,10 @@ def create_app(generate: Generator | None = None, price_file=None) -> Flask:
     """price_file overrides the prices JSON path (used by tests to avoid
     writing the repo's real data file)."""
     app = Flask(__name__)
+    # /prices/import reads the upload into memory, so an unbounded POST is a
+    # trivial memory-exhaustion DoS. The real prices CSV is ~50 rows; 1 MB is
+    # orders of magnitude more than any legitimate import needs.
+    app.config["MAX_CONTENT_LENGTH"] = 1024 * 1024
     app.jinja_env.filters["br"] = _fmt_int_br
     gen = generate or _default_generate
 
@@ -700,4 +704,7 @@ _PRICES_PAGE = """
 
 
 if __name__ == "__main__":
-    create_app().run(debug=True)
+    # Debug enables the Werkzeug interactive console, which is remote code
+    # execution if the server is ever reachable off localhost. Opt in
+    # explicitly:  NUTRIFORGE_DEBUG=1 python -m src.webapp
+    create_app().run(debug=os.environ.get("NUTRIFORGE_DEBUG") == "1")

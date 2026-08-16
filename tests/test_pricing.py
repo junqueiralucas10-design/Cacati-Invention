@@ -147,10 +147,13 @@ def test_prices_csv_export_and_import_routes(tmp_path):
     assert csv_resp.status_code == 200
     assert csv_resp.mimetype == "text/csv"
 
-    modified = csv_resp.get_data(as_text=True).replace(
-        "banana,6.00", "banana,9.10"
-    )
+    # Rewrite whatever the current banana price is — hardcoding it made this
+    # test fail silently (replace() matched nothing) whenever the data changed.
     import io
+    import re
+    modified = re.sub(
+        r"^banana,.*$", "banana,9.10", csv_resp.get_data(as_text=True), flags=re.M
+    )
     resp = client.post(
         "/prices/import",
         data={"csv_file": (io.BytesIO(modified.encode("utf-8")), "prices.csv")},
