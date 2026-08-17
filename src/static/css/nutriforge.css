@@ -7,25 +7,28 @@
  * verdade), raio 0, uma cor de acento + neutros, separação por espaço e fios.
  */
 
+/* Direção visual: preto e branco de filme — academia vazia, grão pesado,
+ * pretos esmagados, zero matiz. Nas fotos de referência NÃO existe cor, então o
+ * acento aqui é LUMINÂNCIA, não cor: o dado se destaca por ser mais claro que o
+ * resto, como um realce numa foto em P&B.
+ */
 :root {
-  /* Neutros quentes + UM acento. --warn existe só para estados de erro. */
-  --bg: #0b0a09;
-  --surface: #131110;      /* campos de formulário, cabeçalho de tabela */
-  --ink: #f5f1ea;
-  --muted: #a89e92;        /* AA no fundo plano: ~7.4:1 */
-  --line: #2a2521;         /* fios — decorativos, 1px */
+  --bg: #0a0a0b;           /* quase preto, sopro de frio */
+  --surface: #121213;
+  --ink: #e7e5e2;          /* osso */
+  --muted: #969492;        /* 5.0:1 sobre a superfície dos cards (o pior caso real) */
+  --line: #262627;
 
-  --accent: #c08a4a;       /* ~6.5:1 sobre --bg: passa AA até em texto pequeno */
-  --accent-hi: #d09b5c;    /* hover */
-  --warn: #b4643c;
-  --warn-text: #dfa26b;    /* ~8.9:1 sobre --bg */
+  --accent: #d6d2cb;       /* osso claro — o realce */
+  --accent-hi: #f2efe9;
+  --warn: #8f5a48;         /* ferrugem dessaturada, só erro */
+  --warn-text: #c98f77;
 
-  /* Tintas de dado: o MESMO acento em três alturas — não são cores novas. */
-  --tint-1: #c08a4a;
-  --tint-2: rgba(192, 138, 74, .58);
-  --tint-3: rgba(192, 138, 74, .28);
+  /* Tintas de dado: a MESMA luz em três alturas. */
+  --tint-1: #d6d2cb;
+  --tint-2: rgba(214, 210, 203, .55);
+  --tint-3: rgba(214, 210, 203, .26);
 
-  /* Escala tipográfica real — saltos claros. */
   --d1: clamp(3rem, 6.5vw, 5rem);
   --d2: clamp(1.9rem, 3.6vw, 2.75rem);
   --d3: 1.375rem;
@@ -33,7 +36,6 @@
   --t-sm: .875rem;
   --t-xs: .6875rem;
 
-  /* Espaço — base 4px. Densidade varia por importância, não por hábito. */
   --s1: 4px;  --s2: 8px;  --s3: 12px; --s4: 16px;
   --s5: 24px; --s6: 32px; --s7: 48px; --s8: 88px;
 
@@ -46,7 +48,7 @@ html { scroll-behavior: smooth; }
 
 body {
   margin: 0;
-  background: var(--bg);
+  background: transparent;
   color: var(--ink);
   font-family: "Inter", system-ui, -apple-system, sans-serif;
   line-height: 1.55;
@@ -106,7 +108,7 @@ nav {
 .nav-links { display: flex; gap: var(--s5); align-items: center; font-weight: 600; font-size: var(--t-sm); }
 .nav-links a { text-decoration: none; color: var(--muted); transition: color var(--fast) var(--ease); }
 .nav-links a:hover { color: var(--ink); }
-.nav-links a.btn, .nav-links a.btn:hover { color: #171007; }
+.nav-links a.btn, .nav-links a.btn:hover { color: #0d0d0e; }
 
 /* ---------- Botões: retos, tipográficos, planos ---------- */
 .btn {
@@ -114,7 +116,7 @@ nav {
   text-decoration: none; padding: 13px 26px;
   font-family: "Oswald", sans-serif; font-size: var(--t-sm); font-weight: 600;
   letter-spacing: .1em; text-transform: uppercase;
-  background: var(--accent); color: #171007;
+  background: var(--accent); color: #0d0d0e;
   transition: background var(--fast) var(--ease), border-color var(--fast) var(--ease),
               color var(--fast) var(--ease);
 }
@@ -122,7 +124,7 @@ nav {
 .btn.ghost { background: transparent; color: var(--ink); border-color: var(--line); }
 .btn.ghost:hover { border-color: var(--accent); color: var(--accent); background: transparent; }
 .btn.big { padding: 16px 32px; font-size: var(--t-md); }
-.btn.lime { background: var(--accent); border-color: var(--accent); color: #171007; }
+.btn.lime { background: var(--accent); border-color: var(--accent); color: #0d0d0e; }
 .btn.lime:hover { background: var(--accent-hi); border-color: var(--accent-hi); }
 
 /* ---------- Hero: assimétrico, tipografia gigante, zero decoração ---------- */
@@ -358,3 +360,68 @@ input[type=text] { width: 110px; text-align: right; }
     scroll-behavior: auto !important;
   }
 }
+
+/* ---------- Grão e vinheta: a assinatura das fotos de referência ---------- */
+/* Ruído estático sobre a página inteira. Não intercepta clique. */
+body::before {
+  content: "";
+  position: fixed; inset: 0; z-index: 9999; pointer-events: none;
+  opacity: .055;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+/* Vinheta — escurece as bordas como lente de filme. É o ÚNICO gradiente do
+   projeto: reintroduzido de propósito porque é intrínseco à referência.
+   Fica ATRÁS do conteúdo (no <html>), não por cima: como sobreposição ela
+   escureceria o texto junto com o fundo e derrubaria o contraste nas bordas. */
+html {
+  background:
+    radial-gradient(ellipse at 50% 40%, transparent 45%, rgba(0,0,0,.72) 100%),
+    var(--bg);
+  background-attachment: fixed;
+}
+
+/* Sobre as fotos, o cinza secundário cai para 2.5:1 (hero) e 3.5:1 (manifesto)
+   contra o pixel mais claro da imagem — reprovado. Reamarro o TOKEN nas duas
+   seções em vez de listar seletor por seletor: custom properties herdam, então
+   todo descendente que usa var(--muted) sobe junto, e como o valor é mais claro
+   não há regressão nos filhos que têm superfície opaca própria. */
+.hero, #manifesto { --muted: #c2bfb9; }
+
+/* Toda fotografia entra em P&B, contraste alto, pretos fechados. */
+img, .card-img, .shot img {
+  filter: grayscale(1) contrast(1.18) brightness(.72);
+}
+
+/* Hero com a foto da academia por trás, quase apagada.
+   A foto vive no ::before, não no .hero: filter em background-image só pega o
+   elemento inteiro, e isso dessaturaria o texto junto. O brightness baixo é o
+   que esmaga os pretos — não precisa de camada de opacidade por cima. */
+.hero {
+  position: relative;
+  overflow: hidden;
+}
+.hero::before {
+  content: "";
+  position: absolute; inset: 0;
+  background-image: url("/static/images/gym-boxer.jpg");
+  background-size: cover;
+  background-position: center 32%;
+  filter: grayscale(1) contrast(1.25) brightness(.3);
+}
+.hero > * { position: relative; z-index: 1; }
+
+/* Mesmo tratamento no manifesto, com a segunda foto. Uso o #id que já existe
+   no template em vez de inventar uma classe nova — nenhuma marcação muda. */
+#manifesto {
+  position: relative;
+  overflow: hidden;
+}
+#manifesto::before {
+  content: "";
+  position: absolute; inset: 0;
+  background-image: url("/static/images/gym-lift.jpg");
+  background-size: cover;
+  background-position: center 45%;
+  filter: grayscale(1) contrast(1.25) brightness(.22);
+}
+#manifesto > * { position: relative; z-index: 1; }
